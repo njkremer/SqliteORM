@@ -1,5 +1,6 @@
 package com.kremerkstudios.Sqlite;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.sql.Connection;
@@ -10,6 +11,8 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+
+import com.kremerkstudios.Sqlite.Annotations.AutoIncrement;
 
 public class SqlExecutor {
 	public SqlExecutor select(Class<?> clazz) {
@@ -23,9 +26,32 @@ public class SqlExecutor {
 	public SqlExecutor update(Object object) {
 		clazz = object.getClass();
 		query = new StringBuilder();
-		query.append(String.format(UPDATE, clazz.getSimpleName()));
+		query.append(String.format(UPDATE, clazz.getSimpleName().toLowerCase()));
 		statementType = StatementType.UPDATE;
 		sqlObject = object;
+		return this;
+	}
+	
+	public SqlExecutor insert(Object object) throws DataConnectionException {
+		clazz = object.getClass();
+		query = new StringBuilder();
+		query.append(String.format(INSERT, clazz.getSimpleName().toLowerCase()));
+		statementType = StatementType.INSERT;
+		sqlObject = object;
+		try {
+			prepareInsert();			
+		}
+		catch(Exception e) {
+			throw new DataConnectionException("Error running insert");
+		}
+		return this;
+	}
+	
+	public SqlExecutor delete(Class<?> clazz) throws DataConnectionException {
+		this.clazz = clazz;
+		query = new StringBuilder();
+		query.append(String.format(DELETE, clazz.getSimpleName().toLowerCase()));
+		statementType = StatementType.DELETE;
 		return this;
 	}
 	
@@ -81,7 +107,7 @@ public class SqlExecutor {
 			if(connection == null) {
 				throw new DataConnectionException("Connection is not initialized");
 			}
-			statement = connection.prepareStatement(query.toString());
+			statement = connection.prepareStatement(getQuery());
 			replaceValues();
 			executeStatement();
 			return processResults();
@@ -112,24 +138,64 @@ public class SqlExecutor {
 	}
 	
 	public String getQuery() {
-		return query.toString();
+		return query.toString().trim().concat(";");
 	}
 	
 	private void prepareUpdate(String field) throws IllegalArgumentException, IllegalAccessException, InvocationTargetException {
+		boolean first = true;
 		for(Method method : clazz.getDeclaredMethods()) {
 			String methodName = method.getName();
-			String fieldName = methodName.replaceFirst("(get|is)", "");
+			String fieldName = methodName.replaceFirst("(get|is)", "").toLowerCase();
 			if((methodName.startsWith("get") || methodName.startsWith("is"))
 				&& !fieldName.equals(field)) {
 				Object value = method.invoke(sqlObject, (Object[]) null);
-				query.append(String.format(SET, fieldName));
+				if(first) {
+					query.append(String.format(SET, fieldName));
+					first = false;
+				}
+				else {
+					and(fieldName);
+					eq(value);
+				}
 				values.add(value);
 			}
 		}
 	}
 	
+	private void prepareInsert() throws IllegalArgumentException, IllegalAccessException, InvocationTargetException, SecurityException, NoSuchMethodException {
+		StringBuilder fieldsString = new StringBuilder("(");
+		StringBuilder valuesString = new StringBuilder("values(");
+		
+		boolean first = true;
+		for(Field field : clazz.getDeclaredFields()) {
+			String methodName = field.getType() == Boolean.class ? "is" : "get" + capitalize(field.getName().toLowerCase());
+			String fieldName = field.getName().toLowerCase();
+			if(field.getAnnotation(AutoIncrement.class) == null) {
+				try {
+					Object value = clazz.getDeclaredMethod(methodName, (Class<?>[]) null).invoke(sqlObject, (Object[]) null);					
+					if(!first) {
+						fieldsString.append(", ");
+						valuesString.append(", ");
+					}
+					else {
+						first = false;
+					}
+					fieldsString.append(fieldName);
+					valuesString.append("?");
+					values.add(value);
+				}
+				catch(NoSuchMethodException nsme) {
+					//this means the field doesn't have a getter, so we're moving on.
+				}
+			}
+		}
+		fieldsString.append(") ");
+		valuesString.append(") ");
+		query.append(fieldsString.toString()).append(valuesString.toString());
+	}
+	
 	private void replaceValues() throws SQLException {
-		System.out.println(String.format(query.toString().replaceAll("\\?", "%s"), values.toArray()));
+		System.out.println(String.format(getQuery().replaceAll("\\?", "%s"), values.toArray()));
 		for(int i = 0; i < values.size(); i++) {
 			Object object = values.get(i);
 			if(object instanceof String) {
@@ -219,6 +285,9 @@ public class SqlExecutor {
 	private Object sqlObject;
 	
 	private static final String SELECT = "select * from %s ";
+	private static final String UPDATE = "update %s ";
+	private static final String INSERT = "insert into %s";
+	private static final String DELETE = "delete from %s ";
 	private static final String WHERE = "where %s ";
 	private static final String EQUALS = "= ? ";
 	private static final String LIKE = "like ? ";
@@ -226,6 +295,5 @@ public class SqlExecutor {
 	private static final String ORDER_BY = "order by %s ";
 	private static final String ASC = "asc ";
 	private static final String DESC = "desc ";
-	private static final String UPDATE = "update %s ";
 	private static final String SET = "set %s = ? ";
 }

@@ -4,8 +4,7 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
-import com.kremerkstudios.Sqlite.DataConnectionException;
-import com.kremerkstudios.Sqlite.SqlExecutor;
+import com.kremerkstudios.Sqlite.Annotations.AutoIncrement;
 
 public class TU_SqlExecutor {
 
@@ -13,7 +12,7 @@ public class TU_SqlExecutor {
 	public void testBasicSelectStatement() throws DataConnectionException {
 		SqlExecutor executor =  new SqlExecutor();
 		String sql = executor.select(User.class).where("name").eq("nick").getQuery();
-		assertEquals("select * from user where name = ? ", sql);
+		assertEquals("select * from user where name = ?;", sql);
 	}
 	
 	@Test
@@ -23,7 +22,7 @@ public class TU_SqlExecutor {
 		.where("name").eq("nick")
 		.and("password").eq("123456")
 		.getQuery();
-		assertEquals("select * from user where name = ? and password = ? ", sql);
+		assertEquals("select * from user where name = ? and password = ?;", sql);
 	}
 	
 	@Test
@@ -33,7 +32,7 @@ public class TU_SqlExecutor {
 		.where("name").like("%nick")
 		.and("password").eq("123456")
 		.getQuery();
-		assertEquals("select * from user where name like ? and password = ? ", sql);
+		assertEquals("select * from user where name like ? and password = ?;", sql);
 	}
 	
 	@Test
@@ -44,25 +43,54 @@ public class TU_SqlExecutor {
 		.and("password").eq("123456")
 		.orderBy("name").asc()
 		.getQuery();
-		assertEquals("select * from user where name like ? and password = ? order by name asc ", sql);
+		assertEquals("select * from user where name like ? and password = ? order by name asc;", sql);
 		
 		sql = executor.select(User.class)
 		.where("name").like("%nick")
 		.and("password").eq("123456")
 		.orderBy("name").desc()
 		.getQuery();
-		assertEquals("select * from user where name like ? and password = ? order by name desc ", sql);
+		assertEquals("select * from user where name like ? and password = ? order by name desc;", sql);
+	}
+	
+	@Test
+	public void testUpdate() throws DataConnectionException {
+		User user = new User();
+		user.setName("nick");
+		user.setPassword("123456");
+		SqlExecutor executor = new SqlExecutor();
+		String sql = executor.update(user)
+		.where("id").eq(1).getQuery();
+		assertEquals("update user set name = ? and password = ? where id = ?;", sql);
+	}
+	
+	@Test
+	public void testInsert() throws DataConnectionException {
+		User user = new User();
+		user.setName("nick");
+		user.setPassword("123456");
+		SqlExecutor executor = new SqlExecutor();
+		String sql = executor.insert(user).getQuery();
+		assertEquals("insert into user(name, password) values(?, ?);", sql);
+	}
+	
+	@Test
+	public void testDelete() throws DataConnectionException {
+		SqlExecutor executor = new SqlExecutor();
+		String sql = executor.delete(User.class).where("name").eq("nick").getQuery();
+		assertEquals("delete from user where name = ?;", sql);
 	}
 	
 	public class User {
-		private int id;
+		@AutoIncrement
+		private Long id;
 		private String name;
 		private String password;
 		
-		public int getId() {
+		public Long getId() {
 			return id;
 		}
-		public void setId(int id) {
+		public void setId(Long id) {
 			this.id = id;
 		}
 		public String getName() {
