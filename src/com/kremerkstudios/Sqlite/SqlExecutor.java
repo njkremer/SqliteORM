@@ -20,11 +20,30 @@ public class SqlExecutor {
 		return this;
 	}
 	
-	public SqlExecutor where(String field) {
+	public SqlExecutor update(Object object) {
+		clazz = object.getClass();
+		query = new StringBuilder();
+		query.append(String.format(UPDATE, clazz.getSimpleName()));
+		statementType = StatementType.UPDATE;
+		sqlObject = object;
+		return this;
+	}
+	
+	public SqlExecutor where(String field) throws DataConnectionException {
+		if(statementType == StatementType.UPDATE) {
+			try {
+				prepareUpdate(field);
+			}
+			catch(Exception e) {
+				throw new DataConnectionException("Error running update");
+			}
+		}
 		query.append(String.format(WHERE, field));
 		return this;
 	}
 	
+
+
 	public SqlExecutor eq(Object value) {
 		query.append(EQUALS);
 		values.add(value);
@@ -94,6 +113,19 @@ public class SqlExecutor {
 	
 	public String getQuery() {
 		return query.toString();
+	}
+	
+	private void prepareUpdate(String field) throws IllegalArgumentException, IllegalAccessException, InvocationTargetException {
+		for(Method method : clazz.getDeclaredMethods()) {
+			String methodName = method.getName();
+			String fieldName = methodName.replaceFirst("(get|is)", "");
+			if((methodName.startsWith("get") || methodName.startsWith("is"))
+				&& !fieldName.equals(field)) {
+				Object value = method.invoke(sqlObject, (Object[]) null);
+				query.append(String.format(SET, fieldName));
+				values.add(value);
+			}
+		}
 	}
 	
 	private void replaceValues() throws SQLException {
@@ -169,9 +201,13 @@ public class SqlExecutor {
 		else if(object.equals("Date")) {
 			value = resultSet.getDate(index);
 		}
-		String methodName = "set" + columnName.substring(0, 1).toUpperCase() + columnName.substring(1);
+		String methodName = "set" + capitalize(columnName);
 		Method method = clazz.getDeclaredMethod(methodName, (Class<?>[])null);
 		method.invoke(object, value);
+	}
+	
+	private String capitalize(String word) {
+		return word.substring(0, 1).toUpperCase() + word.substring(1);
 	}
 	
 	private StringBuilder query;
@@ -180,6 +216,7 @@ public class SqlExecutor {
 	private List<Object> values = new ArrayList<Object>();;
 	private Class<?> clazz;
 	private StatementType statementType;
+	private Object sqlObject;
 	
 	private static final String SELECT = "select * from %s ";
 	private static final String WHERE = "where %s ";
@@ -189,4 +226,6 @@ public class SqlExecutor {
 	private static final String ORDER_BY = "order by %s ";
 	private static final String ASC = "asc ";
 	private static final String DESC = "desc ";
+	private static final String UPDATE = "update %s ";
+	private static final String SET = "set %s = ? ";
 }

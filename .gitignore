@@ -2,3 +2,4 @@
 #ignore thumbnails created by windows
 Thumbs.db
 *.class
+[Bb]in
