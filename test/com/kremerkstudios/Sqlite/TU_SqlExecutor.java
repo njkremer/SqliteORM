@@ -1,6 +1,8 @@
 package com.kremerkstudios.Sqlite;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 
 import java.util.List;
 
@@ -156,6 +158,52 @@ public class TU_SqlExecutor {
 		assertEquals("123456", newUser.getPassword());
 		
 		deleteUser(newUser);
+	}
+	
+	@Test
+	public void testDeletingAUserNotInTheDb() throws DataConnectionException {
+		DataConnectionManager.init("test/test.db");
+		e.delete(User.class).where("name").eq("Nick").execute();
+	}
+	
+	@Test
+	public void testUpdatingAUserNotInTheDb() throws DataConnectionException {
+		DataConnectionManager.init("test/test.db");
+		User u = new User();
+		u.setName("Nick");
+		u.setPassword("123456");
+		u.setId(new Long(45));
+		e.update(u).execute();
+	}
+	
+	@Test
+	public void testSettingNullDataType() throws DataConnectionException {
+		createUser("Nick");
+		
+		User user = (User) e.select(User.class).where("name").like("N%").execute().getList().get(0);
+		user.setPassword(null);
+		e.update(user).execute();
+		user = (User) e.select(User.class).where("name").like("N%").execute().getList().get(0);
+		assertNull(user.getPassword());
+		
+		deleteUser(user);
+	}
+	
+	@Test
+	public void testUpdatingAnAutoIncrementedField() throws DataConnectionException {
+		createUser("Nick");
+		
+		User user = (User) e.select(User.class).where("name").like("N%").execute().getList().get(0);
+		user.setId(new Long(55));
+		try {
+			e.update(user).where("name").eq("name").execute();
+			fail("This method should have thrown an error by now");
+		}
+		catch(DataConnectionException e) {
+			// pass
+		}
+		user.setId(new Long(1));
+		deleteUser(user);
 	}
 	
 	public void createUser(String name) throws DataConnectionException {

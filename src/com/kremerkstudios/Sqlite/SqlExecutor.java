@@ -7,6 +7,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -69,6 +70,9 @@ public class SqlExecutor {
 		if(statementType == StatementType.UPDATE) {
 			try {
 				prepareUpdate(field);
+			}
+			catch(DataConnectionException e) {
+				throw e;
 			}
 			catch(Exception e) {
 				throw new DataConnectionException("Error running update");
@@ -208,13 +212,16 @@ public class SqlExecutor {
 	}
 	
 	
-	private void prepareUpdate(String field) throws IllegalArgumentException, IllegalAccessException, InvocationTargetException {
+	private void prepareUpdate(String field) throws IllegalArgumentException, IllegalAccessException, InvocationTargetException, DataConnectionException {
 		boolean first = true;
 		for(Field classField : clazz.getDeclaredFields()) {
 			String methodName = classField.getType() == Boolean.class ? "is" : "get" + capitalize(classField.getName().toLowerCase());
 			String fieldName = classField.getName().toLowerCase();
 			
 			if(!fieldName.equals(field)) {
+				if(classField.getAnnotation(AutoIncrement.class) != null) {
+					throw new DataConnectionException("The field " + classField.getName() + " is an auto incremented field and should not be updated.");
+				}
 				try {
 					Object value = clazz.getDeclaredMethod(methodName, (Class<?>[]) null).invoke(sqlObject, (Object[]) null);					
 					if(first) {
@@ -242,7 +249,8 @@ public class SqlExecutor {
 		for(Field field : clazz.getDeclaredFields()) {
 			String methodName = field.getType() == Boolean.class ? "is" : "get" + capitalize(field.getName().toLowerCase());
 			String fieldName = field.getName().toLowerCase();
-			if(field.getAnnotation(PrimaryKey.class) == null) {
+			// We don't want to include the auto increment in the create statement.
+			if(field.getAnnotation(AutoIncrement.class) == null) {
 				try {
 					Object value = clazz.getDeclaredMethod(methodName, (Class<?>[]) null).invoke(sqlObject, (Object[]) null);					
 					if(!first) {
@@ -289,6 +297,9 @@ public class SqlExecutor {
 				String date = df.format((Date) object);
 				statement.setObject(i + 1, date); 
 			}
+			else if(object == null) {
+				statement.setNull(i + 1, Types.NULL);
+			}
 			else {
 				throw new RuntimeException(object.getClass() + " " + object.toString() + " is not a supported object");
 			}
@@ -298,7 +309,7 @@ public class SqlExecutor {
 	private String getPkField() {
 		String pkField = null;
 		for(Field field : this.clazz.getDeclaredFields()) {
-			if(field.getAnnotation(AutoIncrement.class) != null) {
+			if(field.getAnnotation(PrimaryKey.class) != null) {
 				pkField = field.getName();
 			}
 		}
