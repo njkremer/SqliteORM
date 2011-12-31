@@ -1,8 +1,10 @@
 package com.kremerkstudios.Sqlite;
 import com.kremerkstudios.Sqlite.Annotations.AutoIncrement;
+import com.kremerkstudios.Sqlite.Annotations.PrimaryKey;
 
 public class User {
 		@AutoIncrement
+		@PrimaryKey
 		private Long id;
 		private String name;
 		private String password;

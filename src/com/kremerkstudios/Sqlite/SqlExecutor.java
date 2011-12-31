@@ -13,34 +13,32 @@ import java.util.Date;
 import java.util.List;
 
 import com.kremerkstudios.Sqlite.Annotations.AutoIncrement;
+import com.kremerkstudios.Sqlite.Annotations.PrimaryKey;
 
 public class SqlExecutor {
 	public SqlExecutor select(Class<?> clazz) {
+		reset();
 		this.clazz = clazz;
-		query = new StringBuilder();
 		query.append(String.format(SELECT, clazz.getSimpleName().toLowerCase()));
 		statementType = StatementType.SELECT;
-		values.clear();
 		return this;
 	}
 	
 	public SqlExecutor update(Object object) {
+		reset();
 		clazz = object.getClass();
-		query = new StringBuilder();
+		sqlObject = object;
 		query.append(String.format(UPDATE, clazz.getSimpleName().toLowerCase()));
 		statementType = StatementType.UPDATE;
-		sqlObject = object;
-		values.clear();
 		return this;
 	}
 	
 	public SqlExecutor insert(Object object) throws DataConnectionException {
+		reset();
 		clazz = object.getClass();
-		query = new StringBuilder();
 		query.append(String.format(INSERT, clazz.getSimpleName().toLowerCase()));
 		statementType = StatementType.INSERT;
 		sqlObject = object;
-		values.clear();
 		try {
 			prepareInsert();			
 		}
@@ -51,11 +49,19 @@ public class SqlExecutor {
 	}
 	
 	public SqlExecutor delete(Class<?> clazz) throws DataConnectionException {
+		reset();
 		this.clazz = clazz;
-		query = new StringBuilder();
 		query.append(String.format(DELETE, clazz.getSimpleName().toLowerCase()));
 		statementType = StatementType.DELETE;
-		values.clear();
+		return this;
+	}
+	
+	public SqlExecutor delete(Object object) {
+		reset();
+		clazz = object.getClass();
+		sqlObject = object;
+		query.append(String.format(DELETE, clazz.getSimpleName().toLowerCase()));
+		statementType = StatementType.DELETE;
 		return this;
 	}
 	
@@ -68,6 +74,7 @@ public class SqlExecutor {
 				throw new DataConnectionException("Error running update");
 			}
 		}
+		whereDefined = true;
 		query.append(String.format(WHERE, field));
 		return this;
 	}
@@ -111,6 +118,19 @@ public class SqlExecutor {
 			if(connection == null) {
 				throw new DataConnectionException("Connection is not initialized");
 			}
+			// Try to defined the where based on if there is an auto incremented id on the table (acting as pk).
+			if(!whereDefined && (statementType == StatementType.UPDATE || statementType == StatementType.DELETE)) {
+				String pkField = getPkField();
+				Object pkValue = getPkValue(pkField);
+				if(pkField == null) {
+					throw new DataConnectionException("pkField couldn't be found... it's probably not declared on the object.");
+				}
+				if(sqlObject == null) {
+					throw new DataConnectionException("An instance of the object " + clazz.getSimpleName() + " must be supplied to auto infer the upate/delete");		
+				}
+				where(pkField);
+				eq(pkValue);
+			}
 			statement = connection.prepareStatement(getQuery());
 			replaceValues();
 			executeStatement();
@@ -127,10 +147,8 @@ public class SqlExecutor {
 		}
 		return this;
 	}
-	
-	
-	
-	public String getQuery() {
+
+	public String getQuery() throws DataConnectionException {
 		return query.toString().trim().concat(";");
 	}
 	
@@ -192,20 +210,25 @@ public class SqlExecutor {
 	
 	private void prepareUpdate(String field) throws IllegalArgumentException, IllegalAccessException, InvocationTargetException {
 		boolean first = true;
-		for(Method method : clazz.getDeclaredMethods()) {
-			String methodName = method.getName();
-			String fieldName = methodName.replaceFirst("(get|is)", "").toLowerCase();
-			if((methodName.startsWith("get") || methodName.startsWith("is"))
-				&& !fieldName.equals(field)) {
-				Object value = method.invoke(sqlObject, (Object[]) null);
-				if(first) {
-					query.append(String.format(SET, fieldName));
-					values.add(value);
-					first = false;
+		for(Field classField : clazz.getDeclaredFields()) {
+			String methodName = classField.getType() == Boolean.class ? "is" : "get" + capitalize(classField.getName().toLowerCase());
+			String fieldName = classField.getName().toLowerCase();
+			
+			if(!fieldName.equals(field)) {
+				try {
+					Object value = clazz.getDeclaredMethod(methodName, (Class<?>[]) null).invoke(sqlObject, (Object[]) null);					
+					if(first) {
+						query.append(String.format(SET, fieldName));
+						values.add(value);
+						first = false;
+					}
+					else {
+						query.append(String.format(SET_AND, fieldName));
+						values.add(value);
+					}
 				}
-				else {
-					query.append(String.format(SET_AND, fieldName));
-					values.add(value);
+				catch(NoSuchMethodException e) {
+					// this means the field doesn't have a getter, so we're moving on.
 				}
 			}
 		}
@@ -219,7 +242,7 @@ public class SqlExecutor {
 		for(Field field : clazz.getDeclaredFields()) {
 			String methodName = field.getType() == Boolean.class ? "is" : "get" + capitalize(field.getName().toLowerCase());
 			String fieldName = field.getName().toLowerCase();
-			if(field.getAnnotation(AutoIncrement.class) == null) {
+			if(field.getAnnotation(PrimaryKey.class) == null) {
 				try {
 					Object value = clazz.getDeclaredMethod(methodName, (Class<?>[]) null).invoke(sqlObject, (Object[]) null);					
 					if(!first) {
@@ -243,7 +266,7 @@ public class SqlExecutor {
 		query.append(fieldsString.toString()).append(valuesString.toString());
 	}
 	
-	private void replaceValues() throws SQLException {
+	private void replaceValues() throws SQLException, DataConnectionException {
 		System.out.println(String.format(getQuery().replaceAll("\\?", "%s"), values.toArray()));
 		for(int i = 0; i < values.size(); i++) {
 			Object object = values.get(i);
@@ -271,6 +294,26 @@ public class SqlExecutor {
 			}
 		}	
 	}
+	
+	private String getPkField() {
+		String pkField = null;
+		for(Field field : this.clazz.getDeclaredFields()) {
+			if(field.getAnnotation(AutoIncrement.class) != null) {
+				pkField = field.getName();
+			}
+		}
+		return pkField;
+	}
+	
+	private Object getPkValue(String pkField) throws DataConnectionException {
+		try {
+			return this.clazz.getMethod("get" + capitalize(pkField), (Class<?>[]) null).invoke(this.sqlObject, (Object[]) null);
+		}
+		catch(Exception e){
+			throw new DataConnectionException("Could not get pkValue");
+		}
+	}
+
 	
 	private void executeStatement() throws SQLException {
 		if(statementType == StatementType.SELECT) {
@@ -311,6 +354,17 @@ public class SqlExecutor {
 		return word.substring(0, 1).toUpperCase() + word.substring(1);
 	}
 	
+	private void reset() {
+		query = new StringBuilder();
+		statement = null;
+		resultSet = null;
+		values.clear();
+		clazz = null;
+		statementType = null;
+		sqlObject = null;
+		whereDefined = false;
+	}
+	
 	private StringBuilder query;
 	private PreparedStatement statement;
 	private ResultSet resultSet;
@@ -318,6 +372,7 @@ public class SqlExecutor {
 	private Class<?> clazz;
 	private StatementType statementType;
 	private Object sqlObject;
+	private boolean whereDefined = false;
 	
 	private static final String SELECT = "select * from %s ";
 	private static final String UPDATE = "update %s ";

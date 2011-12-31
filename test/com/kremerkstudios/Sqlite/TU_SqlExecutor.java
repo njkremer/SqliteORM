@@ -61,7 +61,7 @@ public class TU_SqlExecutor {
 		SqlExecutor executor = new SqlExecutor();
 		String sql = executor.update(user)
 		.where("id").eq(1).getQuery();
-		assertEquals("update user set name = ? and password = ? where id = ?;", sql);
+		assertEquals("update user set name = ?, password = ? where id = ?;", sql);
 	}
 	
 	@Test
@@ -132,6 +132,32 @@ public class TU_SqlExecutor {
 		deleteUser(newUser);
 	}
 	
+	@Test 
+	public void testInferredDeleteInDb() throws DataConnectionException {
+		createUser("Nick");
+		
+		User user = (User) e.select(User.class).where("name").like("N%").execute().getList().get(0);
+		e.delete(user).execute();
+		List<User> users = e.select(User.class).execute().getList();
+		assertEquals(0, users.size());
+				
+	}
+	
+	@Test
+	public void testInferredUpdateInDb() throws DataConnectionException {
+		createUser("Nick");
+		
+		User user = (User) e.select(User.class).where("name").like("N%").execute().getList().get(0);
+		user.setName("John");
+		e.update(user).execute();
+		
+		User newUser = (User) e.select(User.class).where("name").eq("John").execute().getList().get(0);
+		assertEquals("John", newUser.getName());
+		assertEquals("123456", newUser.getPassword());
+		
+		deleteUser(newUser);
+	}
+	
 	public void createUser(String name) throws DataConnectionException {
 		DataConnectionManager.init("test/test.db");
 		User user = new User();
@@ -141,7 +167,7 @@ public class TU_SqlExecutor {
 	}
 	
 	public void deleteUser(User user) throws DataConnectionException {
-		e.delete(User.class).where("id").eq(user.getId()).execute();
+		e.delete(user).execute();
 	}
 	
 	private SqlExecutor e = new SqlExecutor();
