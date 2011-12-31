@@ -128,9 +128,16 @@ public class SqlExecutor {
 		return this;
 	}
 	
-	public List<Object> getList() {
+	
+	
+	public String getQuery() {
+		return query.toString().trim().concat(";");
+	}
+	
+	@SuppressWarnings("unchecked")
+	public <T> List<T> getList() {
 		try {
-			return processResults();
+			return (List<T>) processResults();
 		}
 		catch (SQLException e) {
 			// TODO Auto-generated catch block
@@ -157,12 +164,32 @@ public class SqlExecutor {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		return new ArrayList<Object>();
+		return (List<T>) new ArrayList<Object>();
 	}
 	
-	public String getQuery() {
-		return query.toString().trim().concat(";");
+	private <T> List<T> processResults() throws SQLException, InstantiationException, IllegalAccessException, SecurityException, IllegalArgumentException, NoSuchMethodException, InvocationTargetException, NoSuchFieldException {
+		List<T> objects = new ArrayList<T>();
+		int columnCount = resultSet.getMetaData().getColumnCount();
+		ArrayList<String> columns = new ArrayList<String>();
+		ArrayList<String> types = new ArrayList<String>();
+		
+		// Get column data
+		for(int i = 1; i <= columnCount; i++) {
+			columns.add(resultSet.getMetaData().getColumnName(i));
+			types.add(resultSet.getMetaData().getColumnTypeName(i));
+		}
+		
+		while(resultSet.next()) {
+			@SuppressWarnings("unchecked")
+			T object = (T) clazz.newInstance();
+			for(int i = 0; i < columnCount; i++) {
+				processColumn(object, columns.get(i), types.get(i), resultSet);
+			}
+			objects.add(object);
+		}
+		return objects;
 	}
+	
 	
 	private void prepareUpdate(String field) throws IllegalArgumentException, IllegalAccessException, InvocationTargetException {
 		boolean first = true;
@@ -255,27 +282,6 @@ public class SqlExecutor {
 		}
 	}
 	
-	private List<Object> processResults() throws SQLException, InstantiationException, IllegalAccessException, SecurityException, IllegalArgumentException, NoSuchMethodException, InvocationTargetException, NoSuchFieldException {
-		List<Object> objects = new ArrayList<Object>();
-		int columnCount = resultSet.getMetaData().getColumnCount();
-		ArrayList<String> columns = new ArrayList<String>();
-		ArrayList<String> types = new ArrayList<String>();
-		
-		// Get column data
-		for(int i = 1; i <= columnCount; i++) {
-			columns.add(resultSet.getMetaData().getColumnName(i));
-			types.add(resultSet.getMetaData().getColumnTypeName(i));
-		}
-		
-		while(resultSet.next()) {
-			Object object = clazz.newInstance();
-			for(int i = 0; i < columnCount; i++) {
-				processColumn(object, columns.get(i), types.get(i), resultSet);
-			}
-			objects.add(object);
-		}
-		return objects;
-	}
 	
 	private void processColumn(Object object, String columnName, String columnType, ResultSet resultSet) throws SQLException, SecurityException, NoSuchMethodException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, NoSuchFieldException {
 		Object value = null;
