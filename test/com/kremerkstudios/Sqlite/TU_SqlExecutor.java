@@ -4,8 +4,6 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
-import com.kremerkstudios.Sqlite.Annotations.AutoIncrement;
-
 public class TU_SqlExecutor {
 
 	@Test
@@ -81,30 +79,31 @@ public class TU_SqlExecutor {
 		assertEquals("delete from user where name = ?;", sql);
 	}
 	
-	public class User {
-		@AutoIncrement
-		private Long id;
-		private String name;
-		private String password;
+	@Test
+	public void testSelectFromDb() throws DataConnectionException {
+		createUser();
 		
-		public Long getId() {
-			return id;
-		}
-		public void setId(Long id) {
-			this.id = id;
-		}
-		public String getName() {
-			return name;
-		}
-		public void setName(String name) {
-			this.name = name;
-		}
-		public String getPassword() {
-			return password;
-		}
-		public void setPassword(String password) {
-			this.password = password;
-		}
+		User newUser = (User) e.select(User.class).where("name").eq("Nick").execute().getList().get(0);
+		assertEquals("Nick", newUser.getName());
+		assertEquals("123456", newUser.getPassword());
 		
+		deleteUser(newUser);
 	}
+	
+	public void createUser() throws DataConnectionException {
+		DataConnectionManager.init("test/test.db");
+		User user = new User();
+		user.setName("Nick");
+		user.setPassword("123456");
+		e.insert(user).execute();
+	}
+	
+	public void deleteUser(User user) throws DataConnectionException {
+		e.delete(User.class).where("id").eq(user.getId()).execute();
+	}
+	
+	private SqlExecutor e = new SqlExecutor();
+	
+	
+	
 }
