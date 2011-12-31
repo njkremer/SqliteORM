@@ -134,10 +134,9 @@ public class SqlExecutor {
 		return query.toString().trim().concat(";");
 	}
 	
-	@SuppressWarnings("unchecked")
 	public <T> List<T> getList() {
 		try {
-			return (List<T>) processResults();
+			return processResults();
 		}
 		catch (SQLException e) {
 			// TODO Auto-generated catch block
@@ -164,7 +163,7 @@ public class SqlExecutor {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		return (List<T>) new ArrayList<Object>();
+		return new ArrayList<T>();
 	}
 	
 	private <T> List<T> processResults() throws SQLException, InstantiationException, IllegalAccessException, SecurityException, IllegalArgumentException, NoSuchMethodException, InvocationTargetException, NoSuchFieldException {
@@ -201,13 +200,13 @@ public class SqlExecutor {
 				Object value = method.invoke(sqlObject, (Object[]) null);
 				if(first) {
 					query.append(String.format(SET, fieldName));
+					values.add(value);
 					first = false;
 				}
 				else {
-					and(fieldName);
-					eq(value);
+					query.append(String.format(SET_AND, fieldName));
+					values.add(value);
 				}
-				values.add(value);
 			}
 		}
 	}
@@ -331,5 +330,6 @@ public class SqlExecutor {
 	private static final String ORDER_BY = "order by %s ";
 	private static final String ASC = "asc ";
 	private static final String DESC = "desc ";
-	private static final String SET = "set %s = ? ";
+	private static final String SET = "set %s = ?";
+	private static final String SET_AND = ", %s = ? ";
 }

@@ -93,6 +93,17 @@ public class TU_SqlExecutor {
 	}
 	
 	@Test
+	public void testSelectWithLikeFromDb() throws DataConnectionException {
+		createUser("Nick");
+		
+		User newUser = (User) e.select(User.class).where("name").like("N%").execute().getList().get(0);
+		assertEquals("Nick", newUser.getName());
+		assertEquals("123456", newUser.getPassword());
+		
+		deleteUser(newUser);
+	}
+	
+	@Test
 	public void testSortingFromDb() throws DataConnectionException {
 		createUser("Nick");
 		createUser("John");
@@ -104,6 +115,21 @@ public class TU_SqlExecutor {
 		
 		deleteUser(users.get(0));
 		deleteUser(users.get(1));
+	}
+	
+	@Test
+	public void testUpdatingInDb() throws DataConnectionException {
+		createUser("Nick");
+		
+		User user = (User) e.select(User.class).where("name").like("N%").execute().getList().get(0);
+		user.setName("John");
+		e.update(user).where("id").eq(user.getId()).execute();
+		
+		User newUser = (User) e.select(User.class).where("name").eq("John").execute().getList().get(0);
+		assertEquals("John", newUser.getName());
+		assertEquals("123456", newUser.getPassword());
+		
+		deleteUser(newUser);
 	}
 	
 	public void createUser(String name) throws DataConnectionException {
