@@ -16,8 +16,8 @@ import java.util.List;
 import com.kremerkstudios.Sqlite.Annotations.AutoIncrement;
 import com.kremerkstudios.Sqlite.Annotations.PrimaryKey;
 
-public class SqlExecutor {
-	public SqlExecutor select(Class<?> clazz) {
+public class SqlExecutor<T> {
+	public SqlExecutor<T> select(Class<T> clazz) {
 		reset();
 		this.clazz = clazz;
 		query.append(String.format(SELECT, clazz.getSimpleName().toLowerCase()));
@@ -25,7 +25,7 @@ public class SqlExecutor {
 		return this;
 	}
 	
-	public SqlExecutor update(Object object) {
+	public SqlExecutor<T> update(Object object) {
 		reset();
 		clazz = object.getClass();
 		sqlObject = object;
@@ -34,7 +34,7 @@ public class SqlExecutor {
 		return this;
 	}
 	
-	public SqlExecutor insert(Object object) throws DataConnectionException {
+	public SqlExecutor<T> insert(Object object) throws DataConnectionException {
 		reset();
 		clazz = object.getClass();
 		query.append(String.format(INSERT, clazz.getSimpleName().toLowerCase()));
@@ -49,7 +49,7 @@ public class SqlExecutor {
 		return this;
 	}
 	
-	public SqlExecutor delete(Class<?> clazz) throws DataConnectionException {
+	public SqlExecutor<T> delete(Class<?> clazz) throws DataConnectionException {
 		reset();
 		this.clazz = clazz;
 		query.append(String.format(DELETE, clazz.getSimpleName().toLowerCase()));
@@ -57,7 +57,7 @@ public class SqlExecutor {
 		return this;
 	}
 	
-	public SqlExecutor delete(Object object) {
+	public SqlExecutor<T> delete(Object object) {
 		reset();
 		clazz = object.getClass();
 		sqlObject = object;
@@ -66,7 +66,7 @@ public class SqlExecutor {
 		return this;
 	}
 	
-	public SqlExecutor where(String field) throws DataConnectionException {
+	public SqlExecutor<T> where(String field) throws DataConnectionException {
 		if(statementType == StatementType.UPDATE) {
 			try {
 				prepareUpdate(field);
@@ -85,79 +85,54 @@ public class SqlExecutor {
 	
 
 
-	public SqlExecutor eq(Object value) {
+	public SqlExecutor<T> eq(Object value) {
 		query.append(EQUALS);
 		values.add(value);
 		return this;
 	}
 	
-	public SqlExecutor like(String value) {
+	public SqlExecutor<T> like(String value) {
 		query.append(LIKE);
 		values.add(value);
 		return this;
 	}
 	
-	public SqlExecutor and(String field) {
+	public SqlExecutor<T> and(String field) {
 		query.append(String.format(AND, field));
 		return this;
 	}
 	
-	public SqlExecutor orderBy(String field) {
+	public SqlExecutor<T> orderBy(String field) {
 		query.append(String.format(ORDER_BY, field));
 		return this;
 	}
 	
-	public SqlExecutor asc() {
+	public SqlExecutor<T> asc() {
 		query.append(ASC);
 		return this;
 	}
-	public SqlExecutor desc() {
+	public SqlExecutor<T> desc() {
 		query.append(DESC);
 		return this;
 	}
 	
-	public SqlExecutor execute() throws DataConnectionException {
-		try {
-			Connection connection = DataConnectionManager.getConnection();
-			if(connection == null) {
-				throw new DataConnectionException("Connection is not initialized");
-			}
-			// Try to defined the where based on if there is an auto incremented id on the table (acting as pk).
-			if(!whereDefined && (statementType == StatementType.UPDATE || statementType == StatementType.DELETE)) {
-				String pkField = getPkField();
-				Object pkValue = getPkValue(pkField);
-				if(pkField == null) {
-					throw new DataConnectionException("pkField couldn't be found... it's probably not declared on the object.");
-				}
-				if(sqlObject == null) {
-					throw new DataConnectionException("An instance of the object " + clazz.getSimpleName() + " must be supplied to auto infer the upate/delete");		
-				}
-				where(pkField);
-				eq(pkValue);
-			}
-			statement = connection.prepareStatement(getQuery());
-			replaceValues();
-			executeStatement();
-		}
-		catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (SecurityException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IllegalArgumentException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		return this;
+	public void execute() throws DataConnectionException {
+		executeStatement();
 	}
 
 	public String getQuery() throws DataConnectionException {
 		return query.toString().trim().concat(";");
 	}
 	
-	public <T> List<T> getList() {
+	public int getCount() {
+		//TODO Implement getCount, change the select portion to select count(*) instead of select *
+		// In addition replace the string builer with a linkedHashMap to easily replace parts of the query.
+		return 0;
+	}
+	
+	public List<T> getList() throws DataConnectionException {
 		try {
+			executeStatement();
 			return processResults();
 		}
 		catch (SQLException e) {
@@ -188,7 +163,7 @@ public class SqlExecutor {
 		return new ArrayList<T>();
 	}
 	
-	private <T> List<T> processResults() throws SQLException, InstantiationException, IllegalAccessException, SecurityException, IllegalArgumentException, NoSuchMethodException, InvocationTargetException, NoSuchFieldException {
+	private List<T> processResults() throws SQLException, InstantiationException, IllegalAccessException, SecurityException, IllegalArgumentException, NoSuchMethodException, InvocationTargetException, NoSuchFieldException {
 		List<T> objects = new ArrayList<T>();
 		int columnCount = resultSet.getMetaData().getColumnCount();
 		ArrayList<String> columns = new ArrayList<String>();
@@ -326,12 +301,43 @@ public class SqlExecutor {
 	}
 
 	
-	private void executeStatement() throws SQLException {
-		if(statementType == StatementType.SELECT) {
-			resultSet = statement.executeQuery();
+	private void executeStatement() throws DataConnectionException {
+		try {
+			Connection connection = DataConnectionManager.getConnection();
+			if(connection == null) {
+				throw new DataConnectionException("Connection is not initialized");
+			}
+			// Try to defined the where based on if there is an auto incremented id on the table (acting as pk).
+			if(!whereDefined && (statementType == StatementType.UPDATE || statementType == StatementType.DELETE)) {
+				String pkField = getPkField();
+				Object pkValue = getPkValue(pkField);
+				if(pkField == null) {
+					throw new DataConnectionException("pkField couldn't be found... it's probably not declared on the object.");
+				}
+				if(sqlObject == null) {
+					throw new DataConnectionException("An instance of the object " + clazz.getSimpleName() + " must be supplied to auto infer the upate/delete");		
+				}
+				where(pkField);
+				eq(pkValue);
+			}
+			statement = connection.prepareStatement(getQuery());
+			replaceValues();
+			if(statementType == StatementType.SELECT) {
+				resultSet = statement.executeQuery();
+			}
+			else {
+				statement.execute();
+			}
 		}
-		else {
-			statement.execute();
+		catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SecurityException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IllegalArgumentException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 	

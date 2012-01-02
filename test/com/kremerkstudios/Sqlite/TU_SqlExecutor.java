@@ -12,14 +12,14 @@ public class TU_SqlExecutor {
 
 	@Test
 	public void testBasicSelectStatement() throws DataConnectionException {
-		SqlExecutor executor =  new SqlExecutor();
+		SqlExecutor<User> executor =  new SqlExecutor<User>();
 		String sql = executor.select(User.class).where("name").eq("nick").getQuery();
 		assertEquals("select * from user where name = ?;", sql);
 	}
 	
 	@Test
 	public void testSelectWithAnds() throws DataConnectionException {
-		SqlExecutor executor = new SqlExecutor();
+		SqlExecutor<User> executor = new SqlExecutor<User>();
 		String sql = executor.select(User.class)
 		.where("name").eq("nick")
 		.and("password").eq("123456")
@@ -29,7 +29,7 @@ public class TU_SqlExecutor {
 	
 	@Test
 	public void testSelectWithLike() throws DataConnectionException {
-		SqlExecutor executor = new SqlExecutor();
+		SqlExecutor<User> executor = new SqlExecutor<User>();
 		String sql = executor.select(User.class)
 		.where("name").like("%nick")
 		.and("password").eq("123456")
@@ -39,7 +39,7 @@ public class TU_SqlExecutor {
 	
 	@Test
 	public void testSelectOrderBy() throws DataConnectionException {
-		SqlExecutor executor = new SqlExecutor();
+		SqlExecutor<User> executor = new SqlExecutor<User>();
 		String sql = executor.select(User.class)
 		.where("name").like("%nick")
 		.and("password").eq("123456")
@@ -60,7 +60,7 @@ public class TU_SqlExecutor {
 		User user = new User();
 		user.setName("nick");
 		user.setPassword("123456");
-		SqlExecutor executor = new SqlExecutor();
+		SqlExecutor<User> executor = new SqlExecutor<User>();
 		String sql = executor.update(user)
 		.where("id").eq(1).getQuery();
 		assertEquals("update user set name = ?, password = ? where id = ?;", sql);
@@ -71,14 +71,14 @@ public class TU_SqlExecutor {
 		User user = new User();
 		user.setName("nick");
 		user.setPassword("123456");
-		SqlExecutor executor = new SqlExecutor();
+		SqlExecutor<User> executor = new SqlExecutor<User>();
 		String sql = executor.insert(user).getQuery();
 		assertEquals("insert into user(name, password) values(?, ?);", sql);
 	}
 	
 	@Test
 	public void testDelete() throws DataConnectionException {
-		SqlExecutor executor = new SqlExecutor();
+		SqlExecutor<User> executor = new SqlExecutor<User>();
 		String sql = executor.delete(User.class).where("name").eq("nick").getQuery();
 		assertEquals("delete from user where name = ?;", sql);
 	}
@@ -87,7 +87,7 @@ public class TU_SqlExecutor {
 	public void testSelectFromDb() throws DataConnectionException {
 		createUser("Nick");
 		
-		User newUser = (User) e.select(User.class).where("name").eq("Nick").execute().getList().get(0);
+		User newUser = e.select(User.class).where("name").eq("Nick").getList().get(0);
 		assertEquals("Nick", newUser.getName());
 		assertEquals("123456", newUser.getPassword());
 		
@@ -98,7 +98,7 @@ public class TU_SqlExecutor {
 	public void testSelectWithLikeFromDb() throws DataConnectionException {
 		createUser("Nick");
 		
-		User newUser = (User) e.select(User.class).where("name").like("N%").execute().getList().get(0);
+		User newUser = e.select(User.class).where("name").like("N%").getList().get(0);
 		assertEquals("Nick", newUser.getName());
 		assertEquals("123456", newUser.getPassword());
 		
@@ -110,7 +110,7 @@ public class TU_SqlExecutor {
 		createUser("Nick");
 		createUser("John");
 		
-		List<User> users = e.select(User.class).orderBy("name").desc().execute().getList();
+		List<User> users = e.select(User.class).orderBy("name").desc().getList();
 		
 		assertEquals(2, users.size());
 		assertEquals("Nick", users.get(0).getName());
@@ -123,11 +123,11 @@ public class TU_SqlExecutor {
 	public void testUpdatingInDb() throws DataConnectionException {
 		createUser("Nick");
 		
-		User user = (User) e.select(User.class).where("name").like("N%").execute().getList().get(0);
+		User user =  e.select(User.class).where("name").like("N%").getList().get(0);
 		user.setName("John");
 		e.update(user).where("id").eq(user.getId()).execute();
 		
-		User newUser = (User) e.select(User.class).where("name").eq("John").execute().getList().get(0);
+		User newUser =  e.select(User.class).where("name").eq("John").getList().get(0);
 		assertEquals("John", newUser.getName());
 		assertEquals("123456", newUser.getPassword());
 		
@@ -138,9 +138,9 @@ public class TU_SqlExecutor {
 	public void testInferredDeleteInDb() throws DataConnectionException {
 		createUser("Nick");
 		
-		User user = (User) e.select(User.class).where("name").like("N%").execute().getList().get(0);
+		User user =  e.select(User.class).where("name").like("N%").getList().get(0);
 		e.delete(user).execute();
-		List<User> users = e.select(User.class).execute().getList();
+		List<User> users = e.select(User.class).getList();
 		assertEquals(0, users.size());
 				
 	}
@@ -149,11 +149,11 @@ public class TU_SqlExecutor {
 	public void testInferredUpdateInDb() throws DataConnectionException {
 		createUser("Nick");
 		
-		User user = (User) e.select(User.class).where("name").like("N%").execute().getList().get(0);
+		User user =  e.select(User.class).where("name").like("N%").getList().get(0);
 		user.setName("John");
 		e.update(user).execute();
 		
-		User newUser = (User) e.select(User.class).where("name").eq("John").execute().getList().get(0);
+		User newUser =  e.select(User.class).where("name").eq("John").getList().get(0);
 		assertEquals("John", newUser.getName());
 		assertEquals("123456", newUser.getPassword());
 		
@@ -180,10 +180,10 @@ public class TU_SqlExecutor {
 	public void testSettingNullDataType() throws DataConnectionException {
 		createUser("Nick");
 		
-		User user = (User) e.select(User.class).where("name").like("N%").execute().getList().get(0);
+		User user =  e.select(User.class).where("name").like("N%").getList().get(0);
 		user.setPassword(null);
 		e.update(user).execute();
-		user = (User) e.select(User.class).where("name").like("N%").execute().getList().get(0);
+		user =  e.select(User.class).where("name").like("N%").getList().get(0);
 		assertNull(user.getPassword());
 		
 		deleteUser(user);
@@ -193,7 +193,7 @@ public class TU_SqlExecutor {
 	public void testUpdatingAnAutoIncrementedField() throws DataConnectionException {
 		createUser("Nick");
 		
-		User user = (User) e.select(User.class).where("name").like("N%").execute().getList().get(0);
+		User user =  e.select(User.class).where("name").like("N%").getList().get(0);
 		user.setId(new Long(55));
 		try {
 			e.update(user).where("name").eq("name").execute();
@@ -218,7 +218,7 @@ public class TU_SqlExecutor {
 		e.delete(user).execute();
 	}
 	
-	private SqlExecutor e = new SqlExecutor();
+	private SqlExecutor<User> e = new SqlExecutor<User>();
 	
 	
 	
