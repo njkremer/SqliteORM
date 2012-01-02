@@ -206,6 +206,15 @@ public class TU_SqlExecutor {
 		deleteUser(user);
 	}
 	
+	@Test
+	public void testSelectCountStatementInDb() throws DataConnectionException {
+		createUser("Nick");
+		
+		assertEquals(1, e.select(User.class).where("name").eq("Nick").getCount());
+		
+		deleteUser(e.getList().get(0));
+	}
+	
 	public void createUser(String name) throws DataConnectionException {
 		DataConnectionManager.init("test/test.db");
 		User user = new User();

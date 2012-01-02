@@ -11,6 +11,7 @@ import java.sql.Types;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 import com.kremerkstudios.Sqlite.Annotations.AutoIncrement;
@@ -20,7 +21,7 @@ public class SqlExecutor<T> {
 	public SqlExecutor<T> select(Class<T> clazz) {
 		reset();
 		this.clazz = clazz;
-		query.append(String.format(SELECT, clazz.getSimpleName().toLowerCase()));
+		queryParts.put(StatementParts.SELECT, String.format(SELECT, clazz.getSimpleName().toLowerCase()));
 		statementType = StatementType.SELECT;
 		return this;
 	}
@@ -29,7 +30,7 @@ public class SqlExecutor<T> {
 		reset();
 		clazz = object.getClass();
 		sqlObject = object;
-		query.append(String.format(UPDATE, clazz.getSimpleName().toLowerCase()));
+		queryParts.put(StatementParts.UPDATE, String.format(UPDATE, clazz.getSimpleName().toLowerCase()));
 		statementType = StatementType.UPDATE;
 		return this;
 	}
@@ -37,7 +38,7 @@ public class SqlExecutor<T> {
 	public SqlExecutor<T> insert(Object object) throws DataConnectionException {
 		reset();
 		clazz = object.getClass();
-		query.append(String.format(INSERT, clazz.getSimpleName().toLowerCase()));
+		queryParts.put(StatementParts.INSERT, String.format(INSERT, clazz.getSimpleName().toLowerCase()));
 		statementType = StatementType.INSERT;
 		sqlObject = object;
 		try {
@@ -52,7 +53,7 @@ public class SqlExecutor<T> {
 	public SqlExecutor<T> delete(Class<?> clazz) throws DataConnectionException {
 		reset();
 		this.clazz = clazz;
-		query.append(String.format(DELETE, clazz.getSimpleName().toLowerCase()));
+		queryParts.put(StatementParts.DELETE, String.format(DELETE, clazz.getSimpleName().toLowerCase()));
 		statementType = StatementType.DELETE;
 		return this;
 	}
@@ -61,7 +62,7 @@ public class SqlExecutor<T> {
 		reset();
 		clazz = object.getClass();
 		sqlObject = object;
-		query.append(String.format(DELETE, clazz.getSimpleName().toLowerCase()));
+		queryParts.put(StatementParts.DELETE, String.format(DELETE, clazz.getSimpleName().toLowerCase()));
 		statementType = StatementType.DELETE;
 		return this;
 	}
@@ -79,40 +80,40 @@ public class SqlExecutor<T> {
 			}
 		}
 		whereDefined = true;
-		query.append(String.format(WHERE, field));
+		queryParts.put(StatementParts.WHERE, String.format(WHERE, field));
 		return this;
 	}
 	
 
 
 	public SqlExecutor<T> eq(Object value) {
-		query.append(EQUALS);
+		queryParts.put(StatementParts.WHERE, queryParts.get(StatementParts.WHERE).concat(EQUALS));
 		values.add(value);
 		return this;
 	}
 	
 	public SqlExecutor<T> like(String value) {
-		query.append(LIKE);
+		queryParts.put(StatementParts.WHERE, queryParts.get(StatementParts.WHERE).concat(LIKE));
 		values.add(value);
 		return this;
 	}
 	
 	public SqlExecutor<T> and(String field) {
-		query.append(String.format(AND, field));
+		queryParts.put(StatementParts.WHERE, queryParts.get(StatementParts.WHERE).concat(String.format(AND, field)));
 		return this;
 	}
 	
 	public SqlExecutor<T> orderBy(String field) {
-		query.append(String.format(ORDER_BY, field));
+		queryParts.put(StatementParts.ORDER_BY, String.format(ORDER_BY, field));
 		return this;
 	}
 	
 	public SqlExecutor<T> asc() {
-		query.append(ASC);
+		queryParts.put(StatementParts.ORDER_BY, queryParts.get(StatementParts.ORDER_BY).concat(ASC));
 		return this;
 	}
 	public SqlExecutor<T> desc() {
-		query.append(DESC);
+		queryParts.put(StatementParts.ORDER_BY, queryParts.get(StatementParts.ORDER_BY).concat(DESC));
 		return this;
 	}
 	
@@ -121,17 +122,26 @@ public class SqlExecutor<T> {
 	}
 
 	public String getQuery() throws DataConnectionException {
-		return query.toString().trim().concat(";");
+		StringBuilder builder = new StringBuilder();
+		for(StatementParts key : queryParts.keySet()) {
+			builder.append(queryParts.get(key));
+		}
+		return builder.toString().trim().concat(";");
 	}
 	
-	public int getCount() {
-		//TODO Implement getCount, change the select portion to select count(*) instead of select *
-		// In addition replace the string builer with a linkedHashMap to easily replace parts of the query.
-		return 0;
+	public int getCount() throws DataConnectionException {
+		queryParts.put(StatementParts.SELECT, String.format(SELECT_COUNT, clazz.getSimpleName().toLowerCase()));
+		executeStatement();
+		try {
+			return processCountResults();
+		} catch (SQLException e) {
+			throw new DataConnectionException("Could not process the count results of the query.", e);
+		}
 	}
 	
 	public List<T> getList() throws DataConnectionException {
 		try {
+			queryParts.put(StatementParts.SELECT, String.format(SELECT, clazz.getSimpleName().toLowerCase()));
 			executeStatement();
 			return processResults();
 		}
@@ -183,12 +193,23 @@ public class SqlExecutor<T> {
 			}
 			objects.add(object);
 		}
+		resultSet.close();
 		return objects;
+	}
+	
+	private int processCountResults() throws SQLException {
+		int count = 0;
+		while(resultSet.next()) {
+			count = resultSet.getInt(1);
+		}
+		resultSet.close();
+		return count;
 	}
 	
 	
 	private void prepareUpdate(String field) throws IllegalArgumentException, IllegalAccessException, InvocationTargetException, DataConnectionException {
 		boolean first = true;
+		queryParts.put(StatementParts.SET, "");
 		for(Field classField : clazz.getDeclaredFields()) {
 			String methodName = classField.getType() == Boolean.class ? "is" : "get" + capitalize(classField.getName().toLowerCase());
 			String fieldName = classField.getName().toLowerCase();
@@ -200,12 +221,12 @@ public class SqlExecutor<T> {
 				try {
 					Object value = clazz.getDeclaredMethod(methodName, (Class<?>[]) null).invoke(sqlObject, (Object[]) null);					
 					if(first) {
-						query.append(String.format(SET, fieldName));
+						queryParts.put(StatementParts.SET, queryParts.get(StatementParts.SET).concat(String.format(SET, fieldName)));
 						values.add(value);
 						first = false;
 					}
 					else {
-						query.append(String.format(SET_AND, fieldName));
+						queryParts.put(StatementParts.SET, queryParts.get(StatementParts.SET).concat(String.format(SET_AND, fieldName)));
 						values.add(value);
 					}
 				}
@@ -246,7 +267,7 @@ public class SqlExecutor<T> {
 		}
 		fieldsString.append(") ");
 		valuesString.append(") ");
-		query.append(fieldsString.toString()).append(valuesString.toString());
+		queryParts.put(StatementParts.INSERT, queryParts.get(StatementParts.INSERT).concat(fieldsString.toString()).concat(valuesString.toString()));
 	}
 	
 	private void replaceValues() throws SQLException, DataConnectionException {
@@ -372,7 +393,7 @@ public class SqlExecutor<T> {
 	}
 	
 	private void reset() {
-		query = new StringBuilder();
+		queryParts = new LinkedHashMap<StatementParts, String>();
 		statement = null;
 		resultSet = null;
 		values.clear();
@@ -382,7 +403,7 @@ public class SqlExecutor<T> {
 		whereDefined = false;
 	}
 	
-	private StringBuilder query;
+	private LinkedHashMap<StatementParts, String> queryParts;
 	private PreparedStatement statement;
 	private ResultSet resultSet;
 	private List<Object> values = new ArrayList<Object>();;
@@ -392,6 +413,7 @@ public class SqlExecutor<T> {
 	private boolean whereDefined = false;
 	
 	private static final String SELECT = "select * from %s ";
+	private static final String SELECT_COUNT = "select count(*) as count from %s ";
 	private static final String UPDATE = "update %s ";
 	private static final String INSERT = "insert into %s";
 	private static final String DELETE = "delete from %s ";
