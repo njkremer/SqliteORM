@@ -1,4 +1,4 @@
-package com.kremerkstudios.Sqlite;
+package com.kremerk.Sqlite;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -14,8 +14,8 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-import com.kremerkstudios.Sqlite.Annotations.AutoIncrement;
-import com.kremerkstudios.Sqlite.Annotations.PrimaryKey;
+import com.kremerk.Sqlite.Annotations.AutoIncrement;
+import com.kremerk.Sqlite.Annotations.PrimaryKey;
 
 public class SqlExecutor<T> {
 	public SqlExecutor<T> select(Class<T> clazz) {

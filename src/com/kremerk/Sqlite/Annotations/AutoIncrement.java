@@ -1,4 +1,4 @@
-package com.kremerkstudios.Sqlite.Annotations;
+package com.kremerk.Sqlite.Annotations;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;

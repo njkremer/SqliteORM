@@ -1,4 +1,4 @@
-package com.kremerkstudios.Sqlite;
+package com.kremerk.Sqlite;
 
 import java.io.File;
 import java.sql.Connection;

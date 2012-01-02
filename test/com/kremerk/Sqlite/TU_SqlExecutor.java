@@ -1,4 +1,4 @@
-package com.kremerkstudios.Sqlite;
+package com.kremerk.Sqlite;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -7,6 +7,10 @@ import static org.junit.Assert.fail;
 import java.util.List;
 
 import org.junit.Test;
+
+import com.kremerk.Sqlite.DataConnectionException;
+import com.kremerk.Sqlite.DataConnectionManager;
+import com.kremerk.Sqlite.SqlExecutor;
 
 public class TU_SqlExecutor {
 

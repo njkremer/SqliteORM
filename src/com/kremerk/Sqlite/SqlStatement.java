@@ -1,4 +1,4 @@
-package com.kremerkstudios.Sqlite;
+package com.kremerk.Sqlite;
 
 public class SqlStatement {
 	

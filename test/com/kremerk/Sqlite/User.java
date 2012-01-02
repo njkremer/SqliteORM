@@ -1,6 +1,6 @@
-package com.kremerkstudios.Sqlite;
-import com.kremerkstudios.Sqlite.Annotations.AutoIncrement;
-import com.kremerkstudios.Sqlite.Annotations.PrimaryKey;
+package com.kremerk.Sqlite;
+import com.kremerk.Sqlite.Annotations.AutoIncrement;
+import com.kremerk.Sqlite.Annotations.PrimaryKey;
 
 public class User {
 		@AutoIncrement

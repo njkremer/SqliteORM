@@ -1,8 +1,12 @@
-package com.kremerkstudios.Sqlite;
+package com.kremerk.Sqlite;
 
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
+
+import com.kremerk.Sqlite.DataConnectionException;
+import com.kremerk.Sqlite.DataConnectionManager;
+import com.kremerk.Sqlite.SqlStatement;
 
 public class TU_SqlStatement {
 
