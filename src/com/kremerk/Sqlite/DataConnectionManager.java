@@ -32,5 +32,9 @@ public class DataConnectionManager {
 		}
 	}
 	
+	private DataConnectionManager() {
+	    // to enforce static usage...
+	}
+	
 	private static Connection connection;
 }

@@ -10,4 +10,5 @@ public enum StatementParts {
 	WHERE,
 	AND,
 	ORDER_BY,
+	COLUMN
 }
