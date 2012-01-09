@@ -5,11 +5,12 @@ import java.util.LinkedHashMap;
 public class MapExpression {
     public MapExpression() {
         queryParts.put(StatementParts.SELECT, SELECT);
+        queryParts.put(StatementParts.COLUMN, "");
     }
     
     public Alias column(String columnString) {
         queryParts.put(StatementParts.COLUMN, queryParts.get(StatementParts.COLUMN).concat(columnString + " "));
-        return new Alias(this);
+        return alias;
     }
     
     public MapExpression distinct() {
@@ -22,7 +23,8 @@ public class MapExpression {
         for (StatementParts key : queryParts.keySet()) {
             builder.append(queryParts.get(key));
         }
-        return builder.toString();
+        String query = builder.toString();
+        return query.substring(0, query.lastIndexOf(",")).concat(" ");
     }
     
     class Alias {
@@ -40,8 +42,9 @@ public class MapExpression {
     }
     
     private static final String SELECT = "select ";
-    private static final String AS = "as %s ";
+    private static final String AS = "as %s, ";
     private static final String DISTINCT = "distinct ";
+    private Alias alias = new Alias(this);
     private LinkedHashMap<StatementParts, String> queryParts = new LinkedHashMap<StatementParts, String>();
     
 }

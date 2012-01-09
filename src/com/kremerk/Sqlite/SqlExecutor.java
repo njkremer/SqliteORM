@@ -11,6 +11,7 @@ import java.sql.Types;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +23,8 @@ public class SqlExecutor<T> {
     public SqlExecutor<T> select(Class<T> clazz) {
         reset();
         this.clazz = clazz;
-        queryParts.put(StatementParts.SELECT, String.format(SELECT, clazz.getSimpleName().toLowerCase()));
+        queryParts.put(StatementParts.SELECT, SELECT);
+        queryParts.put(StatementParts.FROM, String.format(FROM, clazz.getSimpleName().toLowerCase()));
         statementType = StatementType.SELECT;
         return this;
     }
@@ -54,7 +56,8 @@ public class SqlExecutor<T> {
     public SqlExecutor<T> delete(Class<?> clazz) throws DataConnectionException {
         reset();
         this.clazz = clazz;
-        queryParts.put(StatementParts.DELETE, String.format(DELETE, clazz.getSimpleName().toLowerCase()));
+        queryParts.put(StatementParts.DELETE, DELETE);
+        queryParts.put(StatementParts.FROM, String.format(FROM, clazz.getSimpleName().toLowerCase()));
         statementType = StatementType.DELETE;
         return this;
     }
@@ -63,7 +66,8 @@ public class SqlExecutor<T> {
         reset();
         clazz = object.getClass();
         sqlObject = object;
-        queryParts.put(StatementParts.DELETE, String.format(DELETE, clazz.getSimpleName().toLowerCase()));
+        queryParts.put(StatementParts.DELETE, DELETE);
+        queryParts.put(StatementParts.FROM, String.format(FROM, clazz.getSimpleName().toLowerCase()));
         statementType = StatementType.DELETE;
         return this;
     }
@@ -82,12 +86,12 @@ public class SqlExecutor<T> {
         }
         whereDefined = true;
         queryParts.put(StatementParts.WHERE, String.format(WHERE, field));
-        return new WhereExecutor<T>(this);
+        return whereExecutor;
     }
 
     public WhereExecutor<T> and(String field) {
         queryParts.put(StatementParts.WHERE, queryParts.get(StatementParts.WHERE).concat(String.format(AND, field)));
-        return new WhereExecutor<T>(this);
+        return whereExecutor;
     }
 
     public SqlExecutor<T> orderBy(String field) {
@@ -118,7 +122,8 @@ public class SqlExecutor<T> {
     }
 
     public int getCount() throws DataConnectionException {
-        queryParts.put(StatementParts.SELECT, String.format(SELECT_COUNT, clazz.getSimpleName().toLowerCase()));
+        queryParts.put(StatementParts.SELECT, SELECT_COUNT);
+        queryParts.put(StatementParts.FROM, String.format(FROM, clazz.getSimpleName().toLowerCase()));
         executeStatement();
         try {
             return processCountResults();
@@ -139,7 +144,7 @@ public class SqlExecutor<T> {
         }
     }
     
-    public List<Map<String, Object>> getMap(MapExpression mapExpression) {
+    public List<Map<String, Object>> getMap(MapExpression mapExpression) throws DataConnectionException {
         /*
          * 1.) Take the map expression and replace the QUERY part of the sql statement with the mapExpressions's .getQuery()
          * 2.) Execute the query
@@ -147,8 +152,14 @@ public class SqlExecutor<T> {
          *      * Each array element is a row returned
          *      * Each map entry is a map of columnName (alias in this case) to Value.
          */
-        //TODO
-        return null;
+    	this.queryParts.put(StatementParts.SELECT, mapExpression.getQuery());
+    	executeStatement();
+    	try {
+    		return processMapResults();
+        }
+        catch (SQLException e) {
+            throw new DataConnectionException("Could not process the map results of the query.", e);
+        }
     }
 
     private List<T> processResults() throws SQLException, InstantiationException, IllegalAccessException, SecurityException, IllegalArgumentException, NoSuchMethodException, InvocationTargetException, NoSuchFieldException {
@@ -167,7 +178,7 @@ public class SqlExecutor<T> {
             @SuppressWarnings("unchecked")
             T object = (T) clazz.newInstance();
             for (int i = 0; i < columnCount; i++) {
-                processColumn(object, columns.get(i), types.get(i), resultSet);
+                processColumn(object, columns.get(i), resultSet);
             }
             objects.add(object);
         }
@@ -182,6 +193,45 @@ public class SqlExecutor<T> {
         }
         resultSet.close();
         return count;
+    }
+    
+    private List<Map<String, Object>> processMapResults() throws SQLException {
+        List<Map<String, Object>> objects = new ArrayList<Map<String, Object>>();
+        int columnCount = resultSet.getMetaData().getColumnCount();
+        ArrayList<String> columns = new ArrayList<String>();
+        ArrayList<String> types = new ArrayList<String>();
+
+        // Get column data
+        for (int i = 1; i <= columnCount; i++) {
+            columns.add(resultSet.getMetaData().getColumnName(i));
+            types.add(resultSet.getMetaData().getColumnTypeName(i));
+        }
+        
+        while (resultSet.next()) {
+        	Map<String, Object> map = new HashMap<String, Object>();
+            for (int i = 0; i < columnCount; i++) {
+            	System.out.println(types.get(i));
+            	if(types.get(i).equals("text")) {
+            		map.put(columns.get(i), resultSet.getString(columns.get(i)));
+            	}
+            	else if(types.get(i).equals("float")) {
+            		map.put(columns.get(i), resultSet.getDouble(columns.get(i)));
+            	}
+            	else if(types.get(i).equals("integer")) {
+            		map.put(columns.get(i), resultSet.getInt(columns.get(i)));
+            	}
+            	else if(types.get(i).equals("blob")) {
+            		map.put(columns.get(i), resultSet.getBlob(columns.get(i)));
+            	}
+            	else if(types.get(i).equals("null")) {
+            		map.put(columns.get(i), null);
+            	}
+            }
+            objects.add(map);
+        }
+        resultSet.close();
+        
+        return objects;
     }
 
     private void prepareUpdate(String field) throws IllegalArgumentException, IllegalAccessException, InvocationTargetException, DataConnectionException {
@@ -320,7 +370,7 @@ public class SqlExecutor<T> {
                     throw new DataConnectionException("An instance of the object " + clazz.getSimpleName() + " must be supplied to auto infer the upate/delete");
                 }
                 where(pkField);
-                new WhereExecutor<T>(this).eq(pkValue);
+                whereExecutor.eq(pkValue);
             }
             statement = connection.prepareStatement(getQuery());
             replaceValues();
@@ -336,7 +386,7 @@ public class SqlExecutor<T> {
         }
     }
 
-    private void processColumn(Object object, String columnName, String columnType, ResultSet resultSet) throws SQLException, SecurityException, NoSuchMethodException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, NoSuchFieldException {
+    private void processColumn(Object object, String columnName, ResultSet resultSet) throws SQLException, SecurityException, NoSuchMethodException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, NoSuchFieldException {
         Object value = null;
         Class<?> type = clazz.getDeclaredField(columnName).getType();
         if (type == String.class) {
@@ -385,12 +435,14 @@ public class SqlExecutor<T> {
     private StatementType statementType;
     private Object sqlObject;
     private boolean whereDefined = false;
+    private WhereExecutor<T> whereExecutor = new WhereExecutor<T>(this);
 
-    private static final String SELECT = "select * from %s ";
-    private static final String SELECT_COUNT = "select count(*) as count from %s ";
+    private static final String SELECT = "select * ";
+    private static final String FROM = "from %s ";
+    private static final String SELECT_COUNT = "select count(*) as count ";
     private static final String UPDATE = "update %s ";
     private static final String INSERT = "insert into %s";
-    private static final String DELETE = "delete from %s ";
+    private static final String DELETE = "delete ";
     private static final String WHERE = "where %s ";
     private static final String AND = "and %s ";
     private static final String ORDER_BY = "order by %s ";

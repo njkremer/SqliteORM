@@ -5,12 +5,9 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 import java.util.List;
+import java.util.Map;
 
 import org.junit.Test;
-
-import com.kremerk.Sqlite.DataConnectionException;
-import com.kremerk.Sqlite.DataConnectionManager;
-import com.kremerk.Sqlite.SqlExecutor;
 
 public class TU_SqlExecutor {
 
@@ -217,6 +214,18 @@ public class TU_SqlExecutor {
 		assertEquals(1, e.select(User.class).where("name").eq("Nick").getCount());
 		
 		deleteUser(e.getList().get(0));
+	}
+	
+	@Test
+	public void testGettingMapInDb() throws DataConnectionException {
+		createUser("Nick");
+		
+		List<Map<String, Object>> map = e.select(User.class).where("name").eq("Nick")
+		.getMap(new MapExpression().column("name").as("name1").column("id").as("userid"));
+		
+		assertEquals("Nick", map.get(0).get("name1"));
+		assertEquals(1, map.get(0).get("userid"));
+		deleteUser(e.select(User.class).getList().get(0));
 	}
 	
 	public void createUser(String name) throws DataConnectionException {
