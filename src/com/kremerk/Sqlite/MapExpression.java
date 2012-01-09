@@ -8,9 +8,16 @@ public class MapExpression {
         queryParts.put(StatementParts.COLUMN, "");
     }
     
-    public Alias column(String columnString) {
-        queryParts.put(StatementParts.COLUMN, queryParts.get(StatementParts.COLUMN).concat(columnString + " "));
-        return alias;
+    public MapExpression column(String columnString) {
+        queryParts.put(StatementParts.COLUMN, queryParts.get(StatementParts.COLUMN).concat(columnString + ", "));
+        return this;
+    }
+    
+    public MapExpression as(String alias) {
+        String columns = queryParts.get(StatementParts.COLUMN);
+        columns = columns.substring(0, columns.lastIndexOf(",")).concat(" ");
+        queryParts.put(StatementParts.COLUMN, columns.concat(String.format(AS, alias)));
+        return this;
     }
     
     public MapExpression distinct() {
@@ -24,27 +31,14 @@ public class MapExpression {
             builder.append(queryParts.get(key));
         }
         String query = builder.toString();
-        return query.substring(0, query.lastIndexOf(",")).concat(" ");
-    }
-    
-    public class Alias {
-        public Alias(MapExpression me) {
-            mapExpression = me;
-        }
-        
-        public MapExpression as(String alias) {
-            queryParts.put(StatementParts.COLUMN, queryParts.get(StatementParts.COLUMN).concat(String.format(AS, alias)));
-            return mapExpression;
-        }
-        
-        private MapExpression mapExpression;
-        
+        int commaIndex = query.lastIndexOf(",");
+        int trimIndex = commaIndex == -1 ? query.length() : commaIndex;
+        return query.substring(0, trimIndex).concat(" ");
     }
     
     private static final String SELECT = "select ";
     private static final String AS = "as %s, ";
     private static final String DISTINCT = "distinct ";
-    private Alias alias = new Alias(this);
     private LinkedHashMap<StatementParts, String> queryParts = new LinkedHashMap<StatementParts, String>();
     
 }
