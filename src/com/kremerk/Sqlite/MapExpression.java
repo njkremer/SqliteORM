@@ -27,7 +27,7 @@ public class MapExpression {
         return query.substring(0, query.lastIndexOf(",")).concat(" ");
     }
     
-    class Alias {
+    public class Alias {
         public Alias(MapExpression me) {
             mapExpression = me;
         }

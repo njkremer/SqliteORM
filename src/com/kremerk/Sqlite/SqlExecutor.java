@@ -210,7 +210,6 @@ public class SqlExecutor<T> {
         while (resultSet.next()) {
         	Map<String, Object> map = new HashMap<String, Object>();
             for (int i = 0; i < columnCount; i++) {
-            	System.out.println(types.get(i));
             	if(types.get(i).equals("text")) {
             		map.put(columns.get(i), resultSet.getString(columns.get(i)));
             	}
@@ -301,7 +300,7 @@ public class SqlExecutor<T> {
     }
 
     private void replaceValues() throws SQLException, DataConnectionException {
-        System.out.println(String.format(getQuery().replaceAll("\\?", "%s"), values.toArray()));
+        System.out.println(String.format(getQuery().replaceAll("%", "%%").replaceAll("\\?", "%s"), values.toArray()));
         for (int i = 0; i < values.size(); i++) {
             Object object = values.get(i);
             if (object instanceof String) {
@@ -451,7 +450,7 @@ public class SqlExecutor<T> {
     private static final String SET = "set %s = ?";
     private static final String SET_AND = ", %s = ? ";
     
-    class WhereExecutor<U> {
+    public class WhereExecutor<U> {
         
         public WhereExecutor(SqlExecutor<U> sqlE) {
             sqlExecutor = sqlE;
