@@ -213,7 +213,8 @@ public class TU_SqlExecutor {
         deleteUser(e.select(User.class).getList().get(0));
     }
     
-    @Test void testGettingVariousDataTypes() throws DataConnectionException {
+    @Test 
+    public void testGettingVariousDataTypes() throws DataConnectionException {
         DataConnectionManager.init("test/test.db");
         com.kremerk.Sqlite.Test test = new com.kremerk.Sqlite.Test();
         Calendar calendar = Calendar.getInstance();
@@ -231,10 +232,10 @@ public class TU_SqlExecutor {
         com.kremerk.Sqlite.Test test2 = te.select(com.kremerk.Sqlite.Test.class).getList().get(0);
         
         assertEquals(calendar.getTime(), test2.getDateType());
-        assertEquals(20.5, test2.getDoubleType());
-        assertEquals(3.14159f, test2.getFloatType());
-        assertEquals(42, test2.getIntType());
-        assertEquals(1234567890l, test2.getLongType());
+        assertEquals(20.5, test2.getDoubleType(), 0.0);
+        assertEquals(new Float(3.14159f), test2.getFloatType());
+        assertEquals(new Integer(42), test2.getIntType());
+        assertEquals(new Long(1234567890l), test2.getLongType());
         assertEquals("Hello World!", test2.getStringType());
         
         te.delete(test).where("intType").eq(42);
