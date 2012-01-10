@@ -38,7 +38,7 @@ public class SqlExecutor<T> {
         return this;
     }
 
-    public SqlExecutor<T> insert(Object object) throws DataConnectionException {
+    public SqlExecutor<T> insert(T object) throws DataConnectionException {
         reset();
         clazz = object.getClass();
         queryParts.put(StatementParts.INSERT, String.format(INSERT, clazz.getSimpleName().toLowerCase()));
@@ -62,7 +62,7 @@ public class SqlExecutor<T> {
         return this;
     }
 
-    public SqlExecutor<T> delete(Object object) {
+    public SqlExecutor<T> delete(T object) {
         reset();
         clazz = object.getClass();
         sqlObject = object;
@@ -143,19 +143,19 @@ public class SqlExecutor<T> {
             throw new DataConnectionException("An error occured when trying to get the list of " + clazz.getSimpleName() + " objects", e);
         }
     }
-    
+
     public List<Map<String, Object>> getMap(MapExpression mapExpression) throws DataConnectionException {
         /*
-         * 1.) Take the map expression and replace the QUERY part of the sql statement with the mapExpressions's .getQuery()
-         * 2.) Execute the query
-         * 3.) Process the results, building an array of  maps of String to Object.
-         *      * Each array element is a row returned
-         *      * Each map entry is a map of columnName (alias in this case) to Value.
+         * 1.) Take the map expression and replace the QUERY part of the sql
+         * statement with the mapExpressions's .getQuery() 2.) Execute the query
+         * 3.) Process the results, building an array of maps of String to
+         * Object. * Each array element is a row returned * Each map entry is a
+         * map of columnName (alias in this case) to Value.
          */
-    	this.queryParts.put(StatementParts.SELECT, mapExpression.getQuery());
-    	executeStatement();
-    	try {
-    		return processMapResults();
+        this.queryParts.put(StatementParts.SELECT, mapExpression.getQuery());
+        executeStatement();
+        try {
+            return processMapResults();
         }
         catch (SQLException e) {
             throw new DataConnectionException("Could not process the map results of the query.", e);
@@ -194,7 +194,7 @@ public class SqlExecutor<T> {
         resultSet.close();
         return count;
     }
-    
+
     private List<Map<String, Object>> processMapResults() throws SQLException {
         List<Map<String, Object>> objects = new ArrayList<Map<String, Object>>();
         int columnCount = resultSet.getMetaData().getColumnCount();
@@ -206,30 +206,30 @@ public class SqlExecutor<T> {
             columns.add(resultSet.getMetaData().getColumnName(i));
             types.add(resultSet.getMetaData().getColumnTypeName(i));
         }
-        
+
         while (resultSet.next()) {
-        	Map<String, Object> map = new HashMap<String, Object>();
+            Map<String, Object> map = new HashMap<String, Object>();
             for (int i = 0; i < columnCount; i++) {
-            	if(types.get(i).equals("text")) {
-            		map.put(columns.get(i), resultSet.getString(columns.get(i)));
-            	}
-            	else if(types.get(i).equals("float")) {
-            		map.put(columns.get(i), resultSet.getDouble(columns.get(i)));
-            	}
-            	else if(types.get(i).equals("integer")) {
-            		map.put(columns.get(i), resultSet.getInt(columns.get(i)));
-            	}
-            	else if(types.get(i).equals("blob")) {
-            		map.put(columns.get(i), resultSet.getBlob(columns.get(i)));
-            	}
-            	else if(types.get(i).equals("null")) {
-            		map.put(columns.get(i), null);
-            	}
+                if (types.get(i).equals("text")) {
+                    map.put(columns.get(i), resultSet.getString(columns.get(i)));
+                }
+                else if (types.get(i).equals("float")) {
+                    map.put(columns.get(i), resultSet.getDouble(columns.get(i)));
+                }
+                else if (types.get(i).equals("integer")) {
+                    map.put(columns.get(i), resultSet.getInt(columns.get(i)));
+                }
+                else if (types.get(i).equals("blob")) {
+                    map.put(columns.get(i), resultSet.getBlob(columns.get(i)));
+                }
+                else if (types.get(i).equals("null")) {
+                    map.put(columns.get(i), null);
+                }
             }
             objects.add(map);
         }
         resultSet.close();
-        
+
         return objects;
     }
 
@@ -397,7 +397,7 @@ public class SqlExecutor<T> {
         else if (type == Integer.class || type == Integer.TYPE) {
             value = resultSet.getInt(columnName);
         }
-        else if (type == Double.class  || type == Double.TYPE) {
+        else if (type == Double.class || type == Double.TYPE) {
             value = resultSet.getDouble(columnName);
         }
         else if (type == Date.class) {
@@ -410,7 +410,7 @@ public class SqlExecutor<T> {
         Method method = clazz.getDeclaredMethod(methodName, type);
         method.invoke(object, value);
     }
-    
+
     private String capitalize(String word) {
         return word.substring(0, 1).toUpperCase() + word.substring(1);
     }
@@ -449,29 +449,29 @@ public class SqlExecutor<T> {
     private static final String DESC = "desc ";
     private static final String SET = "set %s = ?";
     private static final String SET_AND = ", %s = ? ";
-    
+
     public class WhereExecutor<U> {
-        
+
         public WhereExecutor(SqlExecutor<U> sqlE) {
             sqlExecutor = sqlE;
         }
-        
+
         public SqlExecutor<U> eq(Object value) {
             return _appendToWhere(EQUALS, value);
         }
-        
+
         public SqlExecutor<U> greaterThan(Object value) {
             return _appendToWhere(GREATER_THAN, value);
         }
-        
+
         public SqlExecutor<U> greaterThanOrEq(Object value) {
             return _appendToWhere(GREATER_THAN_EQUAL, value);
         }
-        
+
         public SqlExecutor<U> lessThan(Object value) {
             return _appendToWhere(LESS_THAN, value);
         }
-        
+
         public SqlExecutor<U> lessThanOrEq(Object value) {
             return _appendToWhere(LESS_THAN_EQUAL, value);
         }
@@ -479,13 +479,13 @@ public class SqlExecutor<T> {
         public SqlExecutor<U> like(String value) {
             return _appendToWhere(LIKE, value);
         }
-        
+
         private SqlExecutor<U> _appendToWhere(String appendString, Object value) {
             queryParts.put(StatementParts.WHERE, queryParts.get(StatementParts.WHERE).concat(appendString));
             values.add(value);
             return sqlExecutor;
         }
-        
+
         private SqlExecutor<U> sqlExecutor;
         private static final String EQUALS = "= ? ";
         private static final String GREATER_THAN = "> ? ";
@@ -493,6 +493,6 @@ public class SqlExecutor<T> {
         private static final String GREATER_THAN_EQUAL = ">= ? ";
         private static final String LESS_THAN_EQUAL = "<= ? ";
         private static final String LIKE = "like ? ";
-        
+
     }
 }

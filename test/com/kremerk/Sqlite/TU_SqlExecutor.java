@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
+import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
 
@@ -11,237 +12,248 @@ import org.junit.Test;
 
 public class TU_SqlExecutor {
 
-	@Test
-	public void testBasicSelectStatement() throws DataConnectionException {
-		SqlExecutor<User> executor =  new SqlExecutor<User>();
-		String sql = executor.select(User.class).where("name").eq("nick").getQuery();
-		assertEquals("select * from user where name = ?;", sql);
-	}
-	
-	@Test
-	public void testSelectWithAnds() throws DataConnectionException {
-		SqlExecutor<User> executor = new SqlExecutor<User>();
-		String sql = executor.select(User.class)
-		.where("name").eq("nick")
-		.and("password").eq("123456")
-		.getQuery();
-		assertEquals("select * from user where name = ? and password = ?;", sql);
-	}
-	
-	@Test
-	public void testSelectWithLike() throws DataConnectionException {
-		SqlExecutor<User> executor = new SqlExecutor<User>();
-		String sql = executor.select(User.class)
-		.where("name").like("%nick")
-		.and("password").eq("123456")
-		.getQuery();
-		assertEquals("select * from user where name like ? and password = ?;", sql);
-	}
-	
-	@Test
-	public void testSelectOrderBy() throws DataConnectionException {
-		SqlExecutor<User> executor = new SqlExecutor<User>();
-		String sql = executor.select(User.class)
-		.where("name").like("%nick")
-		.and("password").eq("123456")
-		.orderBy("name").asc()
-		.getQuery();
-		assertEquals("select * from user where name like ? and password = ? order by name asc;", sql);
-		
-		sql = executor.select(User.class)
-		.where("name").like("%nick")
-		.and("password").eq("123456")
-		.orderBy("name").desc()
-		.getQuery();
-		assertEquals("select * from user where name like ? and password = ? order by name desc;", sql);
-	}
-	
-	@Test
-	public void testUpdate() throws DataConnectionException {
-		User user = new User();
-		user.setName("nick");
-		user.setPassword("123456");
-		SqlExecutor<User> executor = new SqlExecutor<User>();
-		String sql = executor.update(user)
-		.where("id").eq(1).getQuery();
-		assertEquals("update user set name = ?, password = ? where id = ?;", sql);
-	}
-	
-	@Test
-	public void testInsert() throws DataConnectionException {
-		User user = new User();
-		user.setName("nick");
-		user.setPassword("123456");
-		SqlExecutor<User> executor = new SqlExecutor<User>();
-		String sql = executor.insert(user).getQuery();
-		assertEquals("insert into user(name, password) values(?, ?);", sql);
-	}
-	
-	@Test
-	public void testDelete() throws DataConnectionException {
-		SqlExecutor<User> executor = new SqlExecutor<User>();
-		String sql = executor.delete(User.class).where("name").eq("nick").getQuery();
-		assertEquals("delete from user where name = ?;", sql);
-	}
-	
-	@Test
-	public void testSelectFromDb() throws DataConnectionException {
-		createUser("Nick");
-		
-		User newUser = e.select(User.class).where("name").eq("Nick").getList().get(0);
-		assertEquals("Nick", newUser.getName());
-		assertEquals("123456", newUser.getPassword());
-		
-		deleteUser(newUser);
-	}
-	
-	@Test
-	public void testSelectWithLikeFromDb() throws DataConnectionException {
-		createUser("Nick");
-		
-		User newUser = e.select(User.class).where("name").like("N%").getList().get(0);
-		assertEquals("Nick", newUser.getName());
-		assertEquals("123456", newUser.getPassword());
-		
-		deleteUser(newUser);
-	}
-	
-	@Test
-	public void testSortingFromDb() throws DataConnectionException {
-		createUser("Nick");
-		createUser("John");
-		
-		List<User> users = e.select(User.class).orderBy("name").desc().getList();
-		
-		assertEquals(2, users.size());
-		assertEquals("Nick", users.get(0).getName());
-		
-		deleteUser(users.get(0));
-		deleteUser(users.get(1));
-	}
-	
-	@Test
-	public void testUpdatingInDb() throws DataConnectionException {
-		createUser("Nick");
-		
-		User user =  e.select(User.class).where("name").like("N%").getList().get(0);
-		user.setName("John");
-		e.update(user).where("id").eq(user.getId()).execute();
-		
-		User newUser =  e.select(User.class).where("name").eq("John").getList().get(0);
-		assertEquals("John", newUser.getName());
-		assertEquals("123456", newUser.getPassword());
-		
-		deleteUser(newUser);
-	}
-	
-	@Test 
-	public void testInferredDeleteInDb() throws DataConnectionException {
-		createUser("Nick");
-		
-		User user =  e.select(User.class).where("name").like("N%").getList().get(0);
-		e.delete(user).execute();
-		List<User> users = e.select(User.class).getList();
-		assertEquals(0, users.size());
-				
-	}
-	
-	@Test
-	public void testInferredUpdateInDb() throws DataConnectionException {
-		createUser("Nick");
-		
-		User user =  e.select(User.class).where("name").like("N%").getList().get(0);
-		user.setName("John");
-		e.update(user).execute();
-		
-		User newUser =  e.select(User.class).where("name").eq("John").getList().get(0);
-		assertEquals("John", newUser.getName());
-		assertEquals("123456", newUser.getPassword());
-		
-		deleteUser(newUser);
-	}
-	
-	@Test
-	public void testDeletingAUserNotInTheDb() throws DataConnectionException {
-		DataConnectionManager.init("test/test.db");
-		e.delete(User.class).where("name").eq("Nick").execute();
-	}
-	
-	@Test
-	public void testUpdatingAUserNotInTheDb() throws DataConnectionException {
-		DataConnectionManager.init("test/test.db");
-		User u = new User();
-		u.setName("Nick");
-		u.setPassword("123456");
-		u.setId(new Long(45));
-		e.update(u).execute();
-	}
-	
-	@Test
-	public void testSettingNullDataType() throws DataConnectionException {
-		createUser("Nick");
-		
-		User user =  e.select(User.class).where("name").like("N%").getList().get(0);
-		user.setPassword(null);
-		e.update(user).execute();
-		user =  e.select(User.class).where("name").like("N%").getList().get(0);
-		assertNull(user.getPassword());
-		
-		deleteUser(user);
-	}
-	
-	@Test
-	public void testUpdatingAnAutoIncrementedField() throws DataConnectionException {
-		createUser("Nick");
-		
-		User user =  e.select(User.class).where("name").like("N%").getList().get(0);
-		user.setId(new Long(55));
-		try {
-			e.update(user).where("name").eq("name").execute();
-			fail("This method should have thrown an error by now");
-		}
-		catch(DataConnectionException e) {
-			// pass
-		}
-		user.setId(new Long(1));
-		deleteUser(user);
-	}
-	
-	@Test
-	public void testSelectCountStatementInDb() throws DataConnectionException {
-		createUser("Nick");
-		
-		assertEquals(1, e.select(User.class).where("name").eq("Nick").getCount());
-		
-		deleteUser(e.getList().get(0));
-	}
-	
-	@Test
-	public void testGettingMapInDb() throws DataConnectionException {
-		createUser("Nick");
-		
-		List<Map<String, Object>> map = e.select(User.class).where("name").eq("Nick")
-		.getMap(new MapExpression().column("name").as("name1").column("id").as("userid"));
-		
-		assertEquals("Nick", map.get(0).get("name1"));
-		assertEquals(1, map.get(0).get("userid"));
-		deleteUser(e.select(User.class).getList().get(0));
-	}
-	
-	public void createUser(String name) throws DataConnectionException {
-		DataConnectionManager.init("test/test.db");
-		User user = new User();
-		user.setName(name);
-		user.setPassword("123456");
-		e.insert(user).execute();
-	}
-	
-	public void deleteUser(User user) throws DataConnectionException {
-		e.delete(user).execute();
-	}
-	
-	private SqlExecutor<User> e = new SqlExecutor<User>();
-	
-	
-	
+    @Test
+    public void testBasicSelectStatement() throws DataConnectionException {
+        SqlExecutor<User> executor = new SqlExecutor<User>();
+        String sql = executor.select(User.class).where("name").eq("nick").getQuery();
+        assertEquals("select * from user where name = ?;", sql);
+    }
+
+    @Test
+    public void testSelectWithAnds() throws DataConnectionException {
+        SqlExecutor<User> executor = new SqlExecutor<User>();
+        String sql = executor.select(User.class).where("name").eq("nick").and("password").eq("123456").getQuery();
+        assertEquals("select * from user where name = ? and password = ?;", sql);
+    }
+
+    @Test
+    public void testSelectWithLike() throws DataConnectionException {
+        SqlExecutor<User> executor = new SqlExecutor<User>();
+        String sql = executor.select(User.class).where("name").like("%nick").and("password").eq("123456").getQuery();
+        assertEquals("select * from user where name like ? and password = ?;", sql);
+    }
+
+    @Test
+    public void testSelectOrderBy() throws DataConnectionException {
+        SqlExecutor<User> executor = new SqlExecutor<User>();
+        String sql = executor.select(User.class).where("name").like("%nick").and("password").eq("123456").orderBy("name").asc().getQuery();
+        assertEquals("select * from user where name like ? and password = ? order by name asc;", sql);
+
+        sql = executor.select(User.class).where("name").like("%nick").and("password").eq("123456").orderBy("name").desc().getQuery();
+        assertEquals("select * from user where name like ? and password = ? order by name desc;", sql);
+    }
+
+    @Test
+    public void testUpdate() throws DataConnectionException {
+        User user = new User();
+        user.setName("nick");
+        user.setPassword("123456");
+        SqlExecutor<User> executor = new SqlExecutor<User>();
+        String sql = executor.update(user).where("id").eq(1).getQuery();
+        assertEquals("update user set name = ?, password = ? where id = ?;", sql);
+    }
+
+    @Test
+    public void testInsert() throws DataConnectionException {
+        User user = new User();
+        user.setName("nick");
+        user.setPassword("123456");
+        SqlExecutor<User> executor = new SqlExecutor<User>();
+        String sql = executor.insert(user).getQuery();
+        assertEquals("insert into user(name, password) values(?, ?);", sql);
+    }
+
+    @Test
+    public void testDelete() throws DataConnectionException {
+        SqlExecutor<User> executor = new SqlExecutor<User>();
+        String sql = executor.delete(User.class).where("name").eq("nick").getQuery();
+        assertEquals("delete from user where name = ?;", sql);
+    }
+
+    @Test
+    public void testSelectFromDb() throws DataConnectionException {
+        createUser("Nick");
+
+        User newUser = e.select(User.class).where("name").eq("Nick").getList().get(0);
+        assertEquals("Nick", newUser.getName());
+        assertEquals("123456", newUser.getPassword());
+
+        deleteUser(newUser);
+    }
+
+    @Test
+    public void testSelectWithLikeFromDb() throws DataConnectionException {
+        createUser("Nick");
+
+        User newUser = e.select(User.class).where("name").like("N%").getList().get(0);
+        assertEquals("Nick", newUser.getName());
+        assertEquals("123456", newUser.getPassword());
+
+        deleteUser(newUser);
+    }
+
+    @Test
+    public void testSortingFromDb() throws DataConnectionException {
+        createUser("Nick");
+        createUser("John");
+
+        List<User> users = e.select(User.class).orderBy("name").desc().getList();
+
+        assertEquals(2, users.size());
+        assertEquals("Nick", users.get(0).getName());
+
+        deleteUser(users.get(0));
+        deleteUser(users.get(1));
+    }
+
+    @Test
+    public void testUpdatingInDb() throws DataConnectionException {
+        createUser("Nick");
+
+        User user = e.select(User.class).where("name").like("N%").getList().get(0);
+        user.setName("John");
+        e.update(user).where("id").eq(user.getId()).execute();
+
+        User newUser = e.select(User.class).where("name").eq("John").getList().get(0);
+        assertEquals("John", newUser.getName());
+        assertEquals("123456", newUser.getPassword());
+
+        deleteUser(newUser);
+    }
+
+    @Test
+    public void testInferredDeleteInDb() throws DataConnectionException {
+        createUser("Nick");
+
+        User user = e.select(User.class).where("name").like("N%").getList().get(0);
+        e.delete(user).execute();
+        List<User> users = e.select(User.class).getList();
+        assertEquals(0, users.size());
+
+    }
+
+    @Test
+    public void testInferredUpdateInDb() throws DataConnectionException {
+        createUser("Nick");
+
+        User user = e.select(User.class).where("name").like("N%").getList().get(0);
+        user.setName("John");
+        e.update(user).execute();
+
+        User newUser = e.select(User.class).where("name").eq("John").getList().get(0);
+        assertEquals("John", newUser.getName());
+        assertEquals("123456", newUser.getPassword());
+
+        deleteUser(newUser);
+    }
+
+    @Test
+    public void testDeletingAUserNotInTheDb() throws DataConnectionException {
+        DataConnectionManager.init("test/test.db");
+        e.delete(User.class).where("name").eq("Nick").execute();
+    }
+
+    @Test
+    public void testUpdatingAUserNotInTheDb() throws DataConnectionException {
+        DataConnectionManager.init("test/test.db");
+        User u = new User();
+        u.setName("Nick");
+        u.setPassword("123456");
+        u.setId(new Long(45));
+        e.update(u).execute();
+    }
+
+    @Test
+    public void testSettingNullDataType() throws DataConnectionException {
+        createUser("Nick");
+
+        User user = e.select(User.class).where("name").like("N%").getList().get(0);
+        user.setPassword(null);
+        e.update(user).execute();
+        user = e.select(User.class).where("name").like("N%").getList().get(0);
+        assertNull(user.getPassword());
+
+        deleteUser(user);
+    }
+
+    @Test
+    public void testUpdatingAnAutoIncrementedField() throws DataConnectionException {
+        createUser("Nick");
+
+        User user = e.select(User.class).where("name").like("N%").getList().get(0);
+        user.setId(new Long(55));
+        try {
+            e.update(user).where("name").eq("name").execute();
+            fail("This method should have thrown an error by now");
+        }
+        catch (DataConnectionException e) {
+            // pass
+        }
+        user.setId(new Long(1));
+        deleteUser(user);
+    }
+
+    @Test
+    public void testSelectCountStatementInDb() throws DataConnectionException {
+        createUser("Nick");
+
+        assertEquals(1, e.select(User.class).where("name").eq("Nick").getCount());
+
+        deleteUser(e.getList().get(0));
+    }
+
+    @Test
+    public void testGettingMapInDb() throws DataConnectionException {
+        createUser("Nick");
+
+        List<Map<String, Object>> map = e.select(User.class).where("name").eq("Nick").getMap(new MapExpression().column("name").as("name1").column("id").as("userid"));
+
+        assertEquals("Nick", map.get(0).get("name1"));
+        assertEquals(1, map.get(0).get("userid"));
+        deleteUser(e.select(User.class).getList().get(0));
+    }
+    
+    @Test void testGettingVariousDataTypes() throws DataConnectionException {
+        DataConnectionManager.init("test/test.db");
+        com.kremerk.Sqlite.Test test = new com.kremerk.Sqlite.Test();
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(2012, 1, 1, 12, 00, 00);
+        
+        test.setDateType(calendar.getTime());
+        test.setDoubleType(20.5);
+        test.setFloatType(3.14159f);
+        test.setIntType(42);
+        test.setLongType(1234567890l);
+        test.setStringType("Hello World!");
+        
+        te.insert(test).execute();
+        
+        com.kremerk.Sqlite.Test test2 = te.select(com.kremerk.Sqlite.Test.class).getList().get(0);
+        
+        assertEquals(calendar.getTime(), test2.getDateType());
+        assertEquals(20.5, test2.getDoubleType());
+        assertEquals(3.14159f, test2.getFloatType());
+        assertEquals(42, test2.getIntType());
+        assertEquals(1234567890l, test2.getLongType());
+        assertEquals("Hello World!", test2.getStringType());
+        
+        te.delete(test).where("intType").eq(42);
+        
+    }
+
+    public void createUser(String name) throws DataConnectionException {
+        DataConnectionManager.init("test/test.db");
+        User user = new User();
+        user.setName(name);
+        user.setPassword("123456");
+        e.insert(user).execute();
+    }
+
+    public void deleteUser(User user) throws DataConnectionException {
+        e.delete(user).execute();
+    }
+
+    private SqlExecutor<User> e = new SqlExecutor<User>();
+    private SqlExecutor<com.kremerk.Sqlite.Test> te = new SqlExecutor<com.kremerk.Sqlite.Test>();
+
 }
