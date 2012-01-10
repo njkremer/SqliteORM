@@ -8,6 +8,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -48,7 +49,7 @@ public class SqlExecutor<T> {
             prepareInsert();
         }
         catch (Exception e) {
-            throw new DataConnectionException("Error running insert");
+            throw new DataConnectionException("Error running insert", e);
         }
         return this;
     }
@@ -162,7 +163,7 @@ public class SqlExecutor<T> {
         }
     }
 
-    private List<T> processResults() throws SQLException, InstantiationException, IllegalAccessException, SecurityException, IllegalArgumentException, NoSuchMethodException, InvocationTargetException, NoSuchFieldException {
+    private List<T> processResults() throws SQLException, InstantiationException, IllegalAccessException, SecurityException, IllegalArgumentException, NoSuchMethodException, InvocationTargetException, NoSuchFieldException, ParseException {
         List<T> objects = new ArrayList<T>();
         int columnCount = resultSet.getMetaData().getColumnCount();
         ArrayList<String> columns = new ArrayList<String>();
@@ -233,7 +234,7 @@ public class SqlExecutor<T> {
         return objects;
     }
 
-    private void prepareUpdate(String field) throws IllegalArgumentException, IllegalAccessException, InvocationTargetException, DataConnectionException {
+    private void prepareUpdate(String field) throws IllegalArgumentException, IllegalAccessException, InvocationTargetException, DataConnectionException, SecurityException, NoSuchMethodException {
         boolean first = true;
         queryParts.put(StatementParts.SET, "");
         for (Field classField : clazz.getDeclaredFields()) {
@@ -257,6 +258,10 @@ public class SqlExecutor<T> {
                     }
                 }
                 catch (NoSuchMethodException e) {
+                	if(classField.getType() == Boolean.class  
+                			&& clazz.getDeclaredMethod(methodName.replaceFirst("is", "get"), (Class<?>[]) null) != null){
+                		throw new DataConnectionException("boolean fields must name their fields isValue, not getValue");
+                	}
                     // this means the field doesn't have a getter, so we're
                     // moving on.
                 }
@@ -264,14 +269,14 @@ public class SqlExecutor<T> {
         }
     }
 
-    private void prepareInsert() throws IllegalArgumentException, IllegalAccessException, InvocationTargetException, SecurityException, NoSuchMethodException {
+    private void prepareInsert() throws IllegalArgumentException, IllegalAccessException, InvocationTargetException, SecurityException, NoSuchMethodException, DataConnectionException {
         StringBuilder fieldsString = new StringBuilder("(");
         StringBuilder valuesString = new StringBuilder("values(");
 
         boolean first = true;
         for (Field field : clazz.getDeclaredFields()) {
-            String methodName = field.getType() == Boolean.class ? "is" : "get" + capitalize(field.getName().toLowerCase());
-            String fieldName = field.getName().toLowerCase();
+            String methodName = field.getType() == Boolean.class ? "is" + capitalize(field.getName()) : "get" + capitalize(field.getName());
+            String fieldName = field.getName();
             // We don't want to include the auto increment in the create
             // statement.
             if (field.getAnnotation(AutoIncrement.class) == null) {
@@ -289,6 +294,10 @@ public class SqlExecutor<T> {
                     values.add(value);
                 }
                 catch (NoSuchMethodException nsme) {
+                	if(field.getType() == Boolean.class  
+                			&& clazz.getDeclaredMethod(methodName.replaceFirst("is", "get"), (Class<?>[]) null) != null){
+                		throw new DataConnectionException("boolean fields must name their fields isValue, not getValue");
+                	}
                     // this means the field doesn't have a getter, so we're
                     // moving on.
                 }
@@ -319,9 +328,11 @@ public class SqlExecutor<T> {
                 statement.setDouble(i + 1, (Double) object);
             }
             else if (object instanceof Date) {
-                SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                String date = df.format((Date) object);
+                String date = DATE_FORMAT.format((Date) object);
                 statement.setObject(i + 1, date);
+            }
+            else if (object instanceof Boolean) {
+            	statement.setBoolean(i + 1, (Boolean) object);
             }
             else if (object == null) {
                 statement.setNull(i + 1, Types.NULL);
@@ -385,7 +396,7 @@ public class SqlExecutor<T> {
         }
     }
 
-    private void processColumn(Object object, String columnName, ResultSet resultSet) throws SQLException, SecurityException, NoSuchMethodException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, NoSuchFieldException {
+    private void processColumn(Object object, String columnName, ResultSet resultSet) throws SQLException, SecurityException, NoSuchMethodException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, NoSuchFieldException, ParseException {
         Object value = null;
         Class<?> type = clazz.getDeclaredField(columnName).getType();
         if (type == String.class) {
@@ -400,8 +411,11 @@ public class SqlExecutor<T> {
         else if (type == Double.class || type == Double.TYPE) {
             value = resultSet.getDouble(columnName);
         }
+        else if (type == Boolean.class || type == Boolean.TYPE) {
+        	value = resultSet.getBoolean(columnName);
+        }
         else if (type == Date.class) {
-            value = resultSet.getDate(columnName);
+            value = DATE_FORMAT.parse(resultSet.getString(columnName));
         }
         else if (type == Long.class || type == Long.TYPE) {
             value = resultSet.getLong(columnName);
@@ -435,6 +449,9 @@ public class SqlExecutor<T> {
     private Object sqlObject;
     private boolean whereDefined = false;
     private WhereExecutor<T> whereExecutor = new WhereExecutor<T>(this);
+    
+    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
 
     private static final String SELECT = "select * ";
     private static final String FROM = "from %s ";

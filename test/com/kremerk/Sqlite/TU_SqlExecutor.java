@@ -216,9 +216,10 @@ public class TU_SqlExecutor {
     @Test 
     public void testGettingVariousDataTypes() throws DataConnectionException {
         DataConnectionManager.init("test/test.db");
-        com.kremerk.Sqlite.Test test = new com.kremerk.Sqlite.Test();
+        TestObject test = new TestObject();
         Calendar calendar = Calendar.getInstance();
-        calendar.set(2012, 1, 1, 12, 00, 00);
+        calendar.set(2012, 0, 1, 12, 00, 00);
+        calendar.set(Calendar.MILLISECOND, 0);
         
         test.setDateType(calendar.getTime());
         test.setDoubleType(20.5);
@@ -226,19 +227,21 @@ public class TU_SqlExecutor {
         test.setIntType(42);
         test.setLongType(1234567890l);
         test.setStringType("Hello World!");
+        test.setBooleanType(true);
         
         te.insert(test).execute();
         
-        com.kremerk.Sqlite.Test test2 = te.select(com.kremerk.Sqlite.Test.class).getList().get(0);
+        TestObject test2 = te.select(TestObject.class).getList().get(0);
         
-        assertEquals(calendar.getTime(), test2.getDateType());
         assertEquals(20.5, test2.getDoubleType(), 0.0);
         assertEquals(new Float(3.14159f), test2.getFloatType());
         assertEquals(new Integer(42), test2.getIntType());
         assertEquals(new Long(1234567890l), test2.getLongType());
         assertEquals("Hello World!", test2.getStringType());
+        assertEquals(calendar.getTime().getTime(), test2.getDateType().getTime());
+        assertEquals(true, test2.isBooleanType());
         
-        te.delete(test).where("intType").eq(42);
+        te.delete(test).where("intType").eq(42).execute();
         
     }
 
@@ -255,6 +258,6 @@ public class TU_SqlExecutor {
     }
 
     private SqlExecutor<User> e = new SqlExecutor<User>();
-    private SqlExecutor<com.kremerk.Sqlite.Test> te = new SqlExecutor<com.kremerk.Sqlite.Test>();
+    private SqlExecutor<com.kremerk.Sqlite.TestObject> te = new SqlExecutor<com.kremerk.Sqlite.TestObject>();
 
 }

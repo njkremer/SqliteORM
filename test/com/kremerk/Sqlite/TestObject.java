@@ -2,7 +2,7 @@ package com.kremerk.Sqlite;
 
 import java.util.Date;
 
-public class Test {
+public class TestObject {
     public Integer getIntType() {
         return intType;
     }
@@ -39,10 +39,18 @@ public class Test {
     public void setLongType(Long longType) {
         this.longType = longType;
     }
-    private Integer intType;
+    public Boolean isBooleanType() {
+		return booleanType;
+	}
+	public void setBooleanType(Boolean booleanType) {
+		this.booleanType = booleanType;
+	}
+
+	private Integer intType;
     private String stringType;
     private Float floatType;
     private Double doubleType;
     private Date dateType;
     private Long longType;
+    private Boolean booleanType;
 }
