@@ -150,7 +150,7 @@ public class SqlExecutor<T> {
      * {@linkplain SqlExecutor#and(String)} method.
      * 
      * @param field Additional fields of the object/database table you want to limit by.
-     * @returna {@linkplain WhereExecutor} to be used in conjunction with the <b>and</b> method.
+     * @return A {@linkplain WhereExecutor} to be used in conjunction with the <b>and</b> method.
      */
     public WhereExecutor<T> and(String field) {
         queryParts.put(StatementParts.WHERE, queryParts.get(StatementParts.WHERE).concat(String.format(AND, field)));

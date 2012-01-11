@@ -63,7 +63,7 @@ public class MapExpression {
     /**
      * Allows you to specify making a query distinc, which will eliminate duplicate rows in the result set.
      * 
-     * @return
+     * @return A {@link MapExpression} for function chaining.
      */
     public MapExpression distinct() {
         queryParts.put(StatementParts.SELECT, SELECT + DISTINCT);
