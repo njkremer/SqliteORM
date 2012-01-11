@@ -20,7 +20,24 @@ import java.util.Map;
 import com.kremerk.Sqlite.Annotations.AutoIncrement;
 import com.kremerk.Sqlite.Annotations.PrimaryKey;
 
+/**
+ * Used to continue a {@linkplain SqlStatement} to interact with the database.
+ * 
+ * <p>Typically this class is not instantiated outright, instead use {@linkplain SqlStatement#select(Class)},
+ * {@linkplain SqlStatement#update(Object)}, {@linkplain SqlStatement#insert(Object)},
+ * {@linkplain SqlStatement#delete(Class)}, or {@linkplain SqlStatement#delete(Object)} to create an instance of
+ * this class.
+ * 
+ * @param <T> A class that is a POJO that "maps" to a table in the database.
+ */
 public class SqlExecutor<T> {
+
+    /**
+     * Used for retrieving an Object out of the database.
+     * 
+     * @param clazz A reference to the Object.class that you are retrieving from the database.
+     * @return A {@linkplain SqlExecutor} used for function chaining.
+     */
     public SqlExecutor<T> select(Class<T> clazz) {
         reset();
         this.clazz = clazz;
@@ -30,21 +47,33 @@ public class SqlExecutor<T> {
         return this;
     }
 
-    public SqlExecutor<T> update(Object object) {
+    /**
+     * Used for updating an Object in the database.
+     * 
+     * @param databaseObject An object that was queried from the database that has been updated.
+     * @return A {@linkplain SqlExecutor} used for function chaining.
+     */
+    public SqlExecutor<T> update(Object databaseObject) {
         reset();
-        clazz = object.getClass();
-        sqlObject = object;
+        clazz = databaseObject.getClass();
+        sqlObject = databaseObject;
         queryParts.put(StatementParts.UPDATE, String.format(UPDATE, clazz.getSimpleName().toLowerCase()));
         statementType = StatementType.UPDATE;
         return this;
     }
 
-    public SqlExecutor<T> insert(T object) throws DataConnectionException {
+    /**
+     * Used for inserting an Object into the database.
+     * 
+     * @param databaseObject An object that is to be input into the database.
+     * @return A {@linkplain SqlExecutor} used for function chaining.
+     */
+    public SqlExecutor<T> insert(T databaseObject) throws DataConnectionException {
         reset();
-        clazz = object.getClass();
+        clazz = databaseObject.getClass();
         queryParts.put(StatementParts.INSERT, String.format(INSERT, clazz.getSimpleName().toLowerCase()));
         statementType = StatementType.INSERT;
-        sqlObject = object;
+        sqlObject = databaseObject;
         try {
             prepareInsert();
         }
@@ -54,6 +83,13 @@ public class SqlExecutor<T> {
         return this;
     }
 
+    /**
+     * Used for deleting an record in the database.
+     * 
+     * @param clazz A reference to the Object.class that you are deleting from the database.
+     * @return A {@linkplain SqlExecutor} used for function chaining.
+     * @throws DataConnectionException
+     */
     public SqlExecutor<T> delete(Class<?> clazz) throws DataConnectionException {
         reset();
         this.clazz = clazz;
@@ -63,16 +99,33 @@ public class SqlExecutor<T> {
         return this;
     }
 
-    public SqlExecutor<T> delete(T object) {
+    /**
+     * Used for deleting an Object in the database.
+     * 
+     * @param databaseObject An object that should be deleted from the database.
+     * @return A {@linkplain SqlExecutor} used for function chaining.
+     * @throws DataConnectionException
+     */
+    public SqlExecutor<T> delete(T databaseObject) {
         reset();
-        clazz = object.getClass();
-        sqlObject = object;
+        clazz = databaseObject.getClass();
+        sqlObject = databaseObject;
         queryParts.put(StatementParts.DELETE, DELETE);
         queryParts.put(StatementParts.FROM, String.format(FROM, clazz.getSimpleName().toLowerCase()));
         statementType = StatementType.DELETE;
         return this;
     }
 
+    /**
+     * Used to start a "where clause" when querying/updating/deleting for an Object from the database. This will
+     * return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database
+     * call. Additional fields can be added to your "where clause" by using the
+     * {@linkplain SqlExecutor#and(String)} method.
+     * 
+     * @param field The field of the object/database table you want to limit by.
+     * @return a {@linkplain WhereExecutor} to be used in conjunction with the <b>where</b> method.
+     * @throws DataConnectionException
+     */
     public WhereExecutor<T> where(String field) throws DataConnectionException {
         if (statementType == StatementType.UPDATE) {
             try {
@@ -90,30 +143,68 @@ public class SqlExecutor<T> {
         return whereExecutor;
     }
 
+    /**
+     * Used to continue a "where clause" when querying/updating/deleting for an Object from the database. This will
+     * return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database
+     * call. Additional fields can be added to your "where clause" by using the
+     * {@linkplain SqlExecutor#and(String)} method.
+     * 
+     * @param field Additional fields of the object/database table you want to limit by.
+     * @returna {@linkplain WhereExecutor} to be used in conjunction with the <b>and</b> method.
+     */
     public WhereExecutor<T> and(String field) {
         queryParts.put(StatementParts.WHERE, queryParts.get(StatementParts.WHERE).concat(String.format(AND, field)));
         return whereExecutor;
     }
 
+    /**
+     * Used to sort the resulting list of Objects from the query. By default, the order will be ordered in
+     * ascending order by the field passed in. If you want to sort in descending order, use
+     * {@linkplain SqlExecutor#desc()} after calling this method.
+     * 
+     * @param field The field of the object/database table you want to sort the resulting list by.
+     * @return A {@linkplain SqlExecutor} used for function chaining.
+     */
     public SqlExecutor<T> orderBy(String field) {
         queryParts.put(StatementParts.ORDER_BY, String.format(ORDER_BY, field));
         return this;
     }
 
+    /**
+     * Used to explicitly say you want to sort in ascending order. Works in conjunction with
+     * {@linkplain SqlExecutor#orderBy(String)}.
+     * 
+     * @return A {@linkplain SqlExecutor} used for function chaining.
+     */
     public SqlExecutor<T> asc() {
         queryParts.put(StatementParts.ORDER_BY, queryParts.get(StatementParts.ORDER_BY).concat(ASC));
         return this;
     }
 
+    /**
+     * Used to sort in descending order. Works in conjunction with {@linkplain SqlExecutor#orderBy(String)}.
+     * 
+     * @return A {@linkplain SqlExecutor} used for function chaining.
+     */
     public SqlExecutor<T> desc() {
         queryParts.put(StatementParts.ORDER_BY, queryParts.get(StatementParts.ORDER_BY).concat(DESC));
         return this;
     }
 
+    /**
+     * Used to end a {@linkplain SqlStatement#update(Object) update}/{@linkplain SqlStatement#insert(Object)
+     * insert}/{@linkplain SqlStatement#delete(Class) delete} {@linkplain SqlStatement}.
+     * 
+     * @throws DataConnectionException
+     */
     public void execute() throws DataConnectionException {
         executeStatement();
     }
 
+    /**
+     * @return Returns the Sql Query String so far for the {@linkplain SqlExecutor}.
+     * @throws DataConnectionException
+     */
     public String getQuery() throws DataConnectionException {
         StringBuilder builder = new StringBuilder();
         for (StatementParts key : queryParts.keySet()) {
@@ -122,6 +213,12 @@ public class SqlExecutor<T> {
         return builder.toString().trim().concat(";");
     }
 
+    /**
+     * Used to end a {@linkplain SqlExecutor#select(Class)} where you just want the count of the resulting query.
+     * 
+     * @return The count of the number of objects the query would return.
+     * @throws DataConnectionException
+     */
     public int getCount() throws DataConnectionException {
         queryParts.put(StatementParts.SELECT, SELECT_COUNT);
         queryParts.put(StatementParts.FROM, String.format(FROM, clazz.getSimpleName().toLowerCase()));
@@ -134,6 +231,14 @@ public class SqlExecutor<T> {
         }
     }
 
+    /**
+     * Returns a {@linkplain List} of Objects of type T (as specified by class type passed into
+     * {@linkplain SqlExecutor#select(Class)}) that result from the query built up with the
+     * {@linkplain SqlStatement}/{@linkplain SqlExecutor}.
+     * 
+     * @return A {@linkplain List} of Objects of type T that is the result from querying the database.
+     * @throws DataConnectionException
+     */
     public List<T> getList() throws DataConnectionException {
         try {
             queryParts.put(StatementParts.SELECT, String.format(SELECT, clazz.getSimpleName().toLowerCase()));
@@ -145,13 +250,24 @@ public class SqlExecutor<T> {
         }
     }
 
+    /**
+     * Returns a {@linkplain List} of {@linkplain Map Maps} which map from a field/database table column for the
+     * resulting query along with the passed in {@linkplain MapExpression}.
+     * 
+     * <p> The value of the map is of type {@linkplain Object} and will need to be cast to the type of value you're
+     * expecting from the fields/columns you specified in your {@linkplain MapExpression}.
+     * 
+     * @param mapExpression A map expression to specify what columns you want back from the database.
+     * @return A {@linkplain List} of {@linkplain Map Maps} which are the result of the query with the passed in
+     * {@linkplain MapExpression}.
+     * @throws DataConnectionException
+     */
     public List<Map<String, Object>> getMap(MapExpression mapExpression) throws DataConnectionException {
         /*
-         * 1.) Take the map expression and replace the QUERY part of the sql
-         * statement with the mapExpressions's .getQuery() 2.) Execute the query
-         * 3.) Process the results, building an array of maps of String to
-         * Object. * Each array element is a row returned * Each map entry is a
-         * map of columnName (alias in this case) to Value.
+         * 1.) Take the map expression and replace the QUERY part of the sql statement with the mapExpressions's
+         * .getQuery() 2.) Execute the query 3.) Process the results, building an array of maps of String to
+         * Object. * Each array element is a row returned * Each map entry is a map of columnName (alias in this
+         * case) to Value.
          */
         this.queryParts.put(StatementParts.SELECT, mapExpression.getQuery());
         executeStatement();
@@ -258,10 +374,9 @@ public class SqlExecutor<T> {
                     }
                 }
                 catch (NoSuchMethodException e) {
-                	if(classField.getType() == Boolean.class  
-                			&& clazz.getDeclaredMethod(methodName.replaceFirst("is", "get"), (Class<?>[]) null) != null){
-                		throw new DataConnectionException("boolean fields must name their fields isValue, not getValue");
-                	}
+                    if (classField.getType() == Boolean.class && clazz.getDeclaredMethod(methodName.replaceFirst("is", "get"), (Class<?>[]) null) != null) {
+                        throw new DataConnectionException("boolean fields must name their fields isValue, not getValue");
+                    }
                     // this means the field doesn't have a getter, so we're
                     // moving on.
                 }
@@ -294,10 +409,9 @@ public class SqlExecutor<T> {
                     values.add(value);
                 }
                 catch (NoSuchMethodException nsme) {
-                	if(field.getType() == Boolean.class  
-                			&& clazz.getDeclaredMethod(methodName.replaceFirst("is", "get"), (Class<?>[]) null) != null){
-                		throw new DataConnectionException("boolean fields must name their fields isValue, not getValue");
-                	}
+                    if (field.getType() == Boolean.class && clazz.getDeclaredMethod(methodName.replaceFirst("is", "get"), (Class<?>[]) null) != null) {
+                        throw new DataConnectionException("boolean fields must name their fields isValue, not getValue");
+                    }
                     // this means the field doesn't have a getter, so we're
                     // moving on.
                 }
@@ -332,7 +446,7 @@ public class SqlExecutor<T> {
                 statement.setObject(i + 1, date);
             }
             else if (object instanceof Boolean) {
-            	statement.setBoolean(i + 1, (Boolean) object);
+                statement.setBoolean(i + 1, (Boolean) object);
             }
             else if (object == null) {
                 statement.setNull(i + 1, Types.NULL);
@@ -412,7 +526,7 @@ public class SqlExecutor<T> {
             value = resultSet.getDouble(columnName);
         }
         else if (type == Boolean.class || type == Boolean.TYPE) {
-        	value = resultSet.getBoolean(columnName);
+            value = resultSet.getBoolean(columnName);
         }
         else if (type == Date.class) {
             value = DATE_FORMAT.parse(resultSet.getString(columnName));
@@ -449,9 +563,8 @@ public class SqlExecutor<T> {
     private Object sqlObject;
     private boolean whereDefined = false;
     private WhereExecutor<T> whereExecutor = new WhereExecutor<T>(this);
-    
-    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
+    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     private static final String SELECT = "select * ";
     private static final String FROM = "from %s ";
@@ -467,32 +580,78 @@ public class SqlExecutor<T> {
     private static final String SET = "set %s = ?";
     private static final String SET_AND = ", %s = ? ";
 
+    /**
+     * Used to specify an equality in a where statement. This is used in conjunction with
+     * {@linkplain SqlExecutor#where(String)} and {@linkplain SqlExecutor#and(String)}.
+     */
     public class WhereExecutor<U> {
 
-        public WhereExecutor(SqlExecutor<U> sqlE) {
-            sqlExecutor = sqlE;
-        }
-
+        /**
+         * Used to specify a equal comparison with the supplied value and the preceding field as specified with a
+         * {@linkplain SqlExecutor#where(String) where} or {@linkplain SqlExecutor#and(String) and}.
+         * 
+         * @param value The value for the right hand side of the equality statement.
+         * @return A {@linkplain SqlExecutor} used for function chaining.
+         */
         public SqlExecutor<U> eq(Object value) {
             return _appendToWhere(EQUALS, value);
         }
 
+        /**
+         * Used to specify a greater than comparison with the supplied value and the preceding field as specified
+         * with a {@linkplain SqlExecutor#where(String) where} or {@linkplain SqlExecutor#and(String) and}.
+         * 
+         * @param value The value for the right hand side of the greater than statement.
+         * @return A {@linkplain SqlExecutor} used for function chaining.
+         */
         public SqlExecutor<U> greaterThan(Object value) {
             return _appendToWhere(GREATER_THAN, value);
         }
 
+        /**
+         * Used to specify a greater than or equal to comparison with the supplied value and the preceding field as
+         * specified with a {@linkplain SqlExecutor#where(String) where} or {@linkplain SqlExecutor#and(String)
+         * and}.
+         * 
+         * @param value The value for the right hand side of the greater than or equal to statement.
+         * @return A {@linkplain SqlExecutor} used for function chaining.
+         */
         public SqlExecutor<U> greaterThanOrEq(Object value) {
             return _appendToWhere(GREATER_THAN_EQUAL, value);
         }
 
+        /**
+         * Used to specify a less than comparison with the supplied value and the preceding field as specified with
+         * a {@linkplain SqlExecutor#where(String) where} or {@linkplain SqlExecutor#and(String) and}.
+         * 
+         * @param value The value for the right hand side of the less than statement.
+         * @return A {@linkplain SqlExecutor} used for function chaining.
+         */
         public SqlExecutor<U> lessThan(Object value) {
             return _appendToWhere(LESS_THAN, value);
         }
 
+        /**
+         * Used to specify a less than or equal to comparison with the supplied value and the preceding field as
+         * specified with a {@linkplain SqlExecutor#where(String) where} or {@linkplain SqlExecutor#and(String)
+         * and}.
+         * 
+         * @param value The value for the right hand side of the less than or equal to statement.
+         * @return A {@linkplain SqlExecutor} used for function chaining.
+         */
         public SqlExecutor<U> lessThanOrEq(Object value) {
             return _appendToWhere(LESS_THAN_EQUAL, value);
         }
 
+        /**
+         * Used to specify a like than comparison with the supplied value and the preceding field as specified with
+         * a {@linkplain SqlExecutor#where(String) where} or {@linkplain SqlExecutor#and(String) and}.
+         * 
+         * <p>A like statement uses a % as the wild card and needs to be specified in the value string passed in.
+         * 
+         * @param value The value for the right hand side of the like statement.
+         * @return A {@linkplain SqlExecutor} used for function chaining.
+         */
         public SqlExecutor<U> like(String value) {
             return _appendToWhere(LIKE, value);
         }
@@ -501,6 +660,10 @@ public class SqlExecutor<T> {
             queryParts.put(StatementParts.WHERE, queryParts.get(StatementParts.WHERE).concat(appendString));
             values.add(value);
             return sqlExecutor;
+        }
+
+        private WhereExecutor(SqlExecutor<U> sqlE) {
+            sqlExecutor = sqlE;
         }
 
         private SqlExecutor<U> sqlExecutor;

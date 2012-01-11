@@ -1,5 +1,9 @@
 package com.kremerk.Sqlite;
 
+/**
+ * An exception that is thrown when something goes wrong with interaction with the database.
+ * 
+ */
 public class DataConnectionException extends Exception {
 
     public DataConnectionException(String string) {
