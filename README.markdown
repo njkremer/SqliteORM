@@ -1,5 +1,12 @@
 # SqliteORM - A Lightweight ORM For SQLite in Java
 
+## Quicklinks:
+* [API JavaDoc](http://kremerk.github.com/SqliteORM/javadoc/)
+* [GitHub Wiki](https://github.com/kremerk/SqliteORM/wiki)
+
+***
+
+
 This project is designed to be a very lightweight ORM for interacting with a SQLite Database. The concept behind it is more convention over configuration. Meaning that, to map an Java Object to a database table, there are very few steps needed:
 
 1. Create a Java Object (POJO style) with fields, and getters/setters that follow the POJO convention:
