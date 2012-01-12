@@ -7,6 +7,7 @@
 This project is designed to be a very lightweight ORM for interacting with a SQLite Database. The concept behind it is more convention over configuration. Meaning that, to map an Java Object to a database table, there are very few steps needed:
 
 Contents:
+
 1. "Mapping" an Object to a Table
 1. Slightly More Advanced "Mapping"
 1. Interacting with the Database
