@@ -8,14 +8,15 @@ This project is designed to be a very lightweight ORM for interacting with a SQL
 
 Contents:
 
-1. "Mapping" an Object to a Table
+1. ["Mapping" an Object to a Table](#mapping)
 1. Slightly More Advanced "Mapping"
 1. Interacting with the Database
 1. Working With Non-Objects From The Database
-1. TODO
+1. TODOs
 
 ***
 
+<a name="mapping"></a>
 # "Mapping" an Object to a Table
 
 1. Create a Java Object (POJO style) with fields, and getters/setters that follow the POJO convention:
@@ -140,7 +141,8 @@ Changing the User with the name = Nick's password:
     SqlStatement stmt = new SqlStatement();
     User nick = stmt.select(User.class).where("name").eq("nick");
     nick.setPassword("ABC123");
-    stmt.update(nick).execute(); // Note this is if you define a @PrimaryKey annotcaiton (see 'Slightly More Advanced "Mapping"' section for more info).
+    stmt.update(nick).execute(); // Note this is if you define a @PrimaryKey annotation 
+                                 //(see 'Slightly More Advanced "Mapping"' section for more info).
 
 Inserting a new User into the database:
 
