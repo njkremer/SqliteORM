@@ -8,14 +8,15 @@ This project is designed to be a very lightweight ORM for interacting with a SQL
 
 Contents:
 
-1. "Mapping" an Object to a Table
-1. Slightly More Advanced "Mapping"
-1. Interacting with the Database
-1. Working With Non-Objects From The Database
-1. TODO
+1. ["Mapping" an Object to a Table][mapping]
+1. [Slightly More Advanced "Mapping"][advanced]
+1. [Interacting with the Database][interaction]
+1. [Working With Non-Objects From The Database][nonObjects]
+1. [TODO][todo]
 
 ***
 
+[mapping]:
 # "Mapping" an Object to a Table
 
 1. Create a Java Object (POJO style) with fields, and getters/setters that follow the POJO convention:
