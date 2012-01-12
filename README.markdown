@@ -9,10 +9,10 @@ This project is designed to be a very lightweight ORM for interacting with a SQL
 Contents:
 
 1. ["Mapping" an Object to a Table](#mapping)
-1. Slightly More Advanced "Mapping"
-1. Interacting with the Database
-1. Working With Non-Objects From The Database
-1. TODOs
+1. [Slightly More Advanced "Mapping"](#advanced)
+1. [Interacting with the Database](#interacting)
+1. [Working With Non-Objects From The Database](#nonObjects)
+1. [TODOs](#todo)
 
 ***
 
@@ -62,7 +62,7 @@ Would map to a database table that looks like this, with the name of **user**:
 
 ***
 
-
+<a name="advanced"></a>
 # Slightly More Advanced "Mapping"
 
 For slightly more "advanced" usage, you can specify two different types of Annotations on your POJO.
@@ -118,6 +118,7 @@ Which would map to a table named **user** that looks like:
 
 ***
 
+<a name="interacting"></a>
 # Interacting with the Database
 
 First you'll need to initialized the connection to the database. You do this with the `DataConnectionManager.init(String)` or `DataConnectionManager.init(String, String)` method.
@@ -164,11 +165,14 @@ for function chaining. So when looking at the JavaDocs you may want to look at t
 
 ***
 
+<a name="nonObjects"></a>
 # Working With Non-Objects From The Database
 
 ***
 
-# TODO
+
+<a name="todo"></a>
+# TODOs
 
 1. Add support for OR in where clause
 1. Add support for more complex logic with where clause, e.g. a AND (b OR c)
