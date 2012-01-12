@@ -7,6 +7,9 @@ import static org.junit.Assert.fail;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 
@@ -212,15 +215,15 @@ public class TU_SqlExecutor {
         assertEquals(1, map.get(0).get("userid"));
         deleteUser(e.select(User.class).getList().get(0));
     }
-    
-    @Test 
+
+    @Test
     public void testGettingVariousDataTypes() throws DataConnectionException {
         DataConnectionManager.init("test/test.db");
         TestObject test = new TestObject();
         Calendar calendar = Calendar.getInstance();
         calendar.set(2012, 0, 1, 12, 00, 00);
         calendar.set(Calendar.MILLISECOND, 0);
-        
+
         test.setDateType(calendar.getTime());
         test.setDoubleType(20.5);
         test.setFloatType(3.14159f);
@@ -228,11 +231,11 @@ public class TU_SqlExecutor {
         test.setLongType(1234567890l);
         test.setStringType("Hello World!");
         test.setBooleanType(true);
-        
+
         te.insert(test).execute();
-        
+
         TestObject test2 = te.select(TestObject.class).getList().get(0);
-        
+
         assertEquals(20.5, test2.getDoubleType(), 0.0);
         assertEquals(new Float(3.14159f), test2.getFloatType());
         assertEquals(new Integer(42), test2.getIntType());
@@ -240,9 +243,46 @@ public class TU_SqlExecutor {
         assertEquals("Hello World!", test2.getStringType());
         assertEquals(calendar.getTime().getTime(), test2.getDateType().getTime());
         assertEquals(true, test2.isBooleanType());
-        
+
         te.delete(test).where("intType").eq(42).execute();
+
+    }
+
+    @Test
+    public void testMultiTreading() throws DataConnectionException, InterruptedException {
+        createUser("Nick");
+        User user = e.select(User.class).where("name").like("N%").getList().get(0);
+
+        ExecutorService pool = Executors.newFixedThreadPool(50);
+
+        for (int i = 0; i < 1000; i++) {
+            pool.execute(new ThreadTest(i));
+        }
+        pool.shutdown();
+        pool.awaitTermination(30, TimeUnit.SECONDS);
+
+        deleteUser(user);
+    }
+
+    public class ThreadTest implements Runnable {
+        public ThreadTest(int i) {
+            this.i = i;
+            this.e = new SqlExecutor<User>().select(User.class);
+        }
+
+        public void run() {
+            try {
+                System.out.print(i + " ");
+                e.getList();
+            }
+            catch (DataConnectionException e) {
+                throw new RuntimeException(e);
+            }
+        }
         
+        private int i;
+        private SqlExecutor<?> e;
+
     }
 
     public void createUser(String name) throws DataConnectionException {
