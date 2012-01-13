@@ -156,6 +156,20 @@ public class SqlExecutor<T> {
         queryParts.put(StatementParts.WHERE, queryParts.get(StatementParts.WHERE).concat(String.format(AND, field)));
         return whereExecutor;
     }
+    
+    /**
+     * Used to continue a "where clause" when querying/updating/deleting for an Object from the database. This will
+     * return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database
+     * call. Additional fields can be added to your "where clause" by using the
+     * {@linkplain SqlExecutor#and(String)} method.
+     * 
+     * @param field Additional fields of the object/database table you want to limit by.
+     * @return A {@linkplain WhereExecutor} to be used in conjunction with the <b>and</b> method.
+     */
+    public WhereExecutor<T> o(String field) {
+        queryParts.put(StatementParts.WHERE, queryParts.get(StatementParts.WHERE).concat(String.format(OR, field)));
+        return whereExecutor;
+    }
 
     /**
      * Used to sort the resulting list of Objects from the query. By default, the order will be ordered in
@@ -199,18 +213,6 @@ public class SqlExecutor<T> {
      */
     public void execute() throws DataConnectionException {
         executeStatement();
-    }
-
-    /**
-     * @return Returns the Sql Query String so far for the {@linkplain SqlExecutor}.
-     * @throws DataConnectionException
-     */
-    public String getQuery() throws DataConnectionException {
-        StringBuilder builder = new StringBuilder();
-        for (StatementParts key : queryParts.keySet()) {
-            builder.append(queryParts.get(key));
-        }
-        return builder.toString().trim().concat(";");
     }
 
     /**
@@ -277,6 +279,22 @@ public class SqlExecutor<T> {
         catch (SQLException e) {
             throw new DataConnectionException("Could not process the map results of the query.", e);
         }
+    }
+    
+    String getQuery() throws DataConnectionException {
+        StringBuilder builder = new StringBuilder();
+        for (StatementParts key : queryParts.keySet()) {
+            builder.append(queryParts.get(key));
+        }
+        return builder.toString().trim().concat(";");
+    }
+    
+    List<Object> getValues() {
+        return this.values;
+    }
+    
+    LinkedHashMap<StatementParts, String> getQueryParts() {
+        return this.queryParts;
     }
 
     private List<T> processResults() throws SQLException, InstantiationException, IllegalAccessException, SecurityException, IllegalArgumentException, NoSuchMethodException, InvocationTargetException, NoSuchFieldException, ParseException {
@@ -574,105 +592,12 @@ public class SqlExecutor<T> {
     private static final String DELETE = "delete ";
     private static final String WHERE = "where %s ";
     private static final String AND = "and %s ";
+    private static final String OR = "or %s ";
     private static final String ORDER_BY = "order by %s ";
     private static final String ASC = "asc ";
     private static final String DESC = "desc ";
     private static final String SET = "set %s = ?";
     private static final String SET_AND = ", %s = ? ";
 
-    /**
-     * Used to specify an equality in a where statement. This is used in conjunction with
-     * {@linkplain SqlExecutor#where(String)} and {@linkplain SqlExecutor#and(String)}.
-     */
-    public class WhereExecutor<U> {
-
-        /**
-         * Used to specify a equal comparison with the supplied value and the preceding field as specified with a
-         * {@linkplain SqlExecutor#where(String) where} or {@linkplain SqlExecutor#and(String) and}.
-         * 
-         * @param value The value for the right hand side of the equality statement.
-         * @return A {@linkplain SqlExecutor} used for function chaining.
-         */
-        public SqlExecutor<U> eq(Object value) {
-            return _appendToWhere(EQUALS, value);
-        }
-
-        /**
-         * Used to specify a greater than comparison with the supplied value and the preceding field as specified
-         * with a {@linkplain SqlExecutor#where(String) where} or {@linkplain SqlExecutor#and(String) and}.
-         * 
-         * @param value The value for the right hand side of the greater than statement.
-         * @return A {@linkplain SqlExecutor} used for function chaining.
-         */
-        public SqlExecutor<U> greaterThan(Object value) {
-            return _appendToWhere(GREATER_THAN, value);
-        }
-
-        /**
-         * Used to specify a greater than or equal to comparison with the supplied value and the preceding field as
-         * specified with a {@linkplain SqlExecutor#where(String) where} or {@linkplain SqlExecutor#and(String)
-         * and}.
-         * 
-         * @param value The value for the right hand side of the greater than or equal to statement.
-         * @return A {@linkplain SqlExecutor} used for function chaining.
-         */
-        public SqlExecutor<U> greaterThanOrEq(Object value) {
-            return _appendToWhere(GREATER_THAN_EQUAL, value);
-        }
-
-        /**
-         * Used to specify a less than comparison with the supplied value and the preceding field as specified with
-         * a {@linkplain SqlExecutor#where(String) where} or {@linkplain SqlExecutor#and(String) and}.
-         * 
-         * @param value The value for the right hand side of the less than statement.
-         * @return A {@linkplain SqlExecutor} used for function chaining.
-         */
-        public SqlExecutor<U> lessThan(Object value) {
-            return _appendToWhere(LESS_THAN, value);
-        }
-
-        /**
-         * Used to specify a less than or equal to comparison with the supplied value and the preceding field as
-         * specified with a {@linkplain SqlExecutor#where(String) where} or {@linkplain SqlExecutor#and(String)
-         * and}.
-         * 
-         * @param value The value for the right hand side of the less than or equal to statement.
-         * @return A {@linkplain SqlExecutor} used for function chaining.
-         */
-        public SqlExecutor<U> lessThanOrEq(Object value) {
-            return _appendToWhere(LESS_THAN_EQUAL, value);
-        }
-
-        /**
-         * Used to specify a like than comparison with the supplied value and the preceding field as specified with
-         * a {@linkplain SqlExecutor#where(String) where} or {@linkplain SqlExecutor#and(String) and}.
-         * 
-         * <p>A like statement uses a % as the wild card and needs to be specified in the value string passed in.
-         * 
-         * @param value The value for the right hand side of the like statement.
-         * @return A {@linkplain SqlExecutor} used for function chaining.
-         */
-        public SqlExecutor<U> like(String value) {
-            return _appendToWhere(LIKE, value);
-        }
-
-        private SqlExecutor<U> _appendToWhere(String appendString, Object value) {
-            queryParts.put(StatementParts.WHERE, queryParts.get(StatementParts.WHERE).concat(appendString));
-            values.add(value);
-            return sqlExecutor;
-        }
-
-        private WhereExecutor(SqlExecutor<U> sqlE) {
-            sqlExecutor = sqlE;
-        }
-
-        private SqlExecutor<U> sqlExecutor;
-        private static final String EQUALS = "= ? ";
-        private static final String GREATER_THAN = "> ? ";
-        private static final String LESS_THAN = "< ? ";
-        private static final String GREATER_THAN_EQUAL = ">= ? ";
-        private static final String LESS_THAN_EQUAL = "<= ? ";
-        private static final String LIKE = "like ? ";
-
-    }
+    
 }
