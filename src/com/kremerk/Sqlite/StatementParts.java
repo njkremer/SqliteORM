@@ -8,6 +8,7 @@ public enum StatementParts {
     UPDATE,
     INSERT,
     DELETE,
+    JOIN,
     SET,
     FROM,
     WHERE,

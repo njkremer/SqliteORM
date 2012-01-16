@@ -1,6 +1,5 @@
 package com.kremerk.Sqlite;
 
-import java.util.List;
 
 
 /**
@@ -77,12 +76,7 @@ public class WhereExecutor<T> {
      */
     public SqlExecutor<T> like(String value) {
         return _appendToWhere(LIKE, value);
-    }
-    
-    public SqlExecutor<T> in(List<Object>objects, String field) {
-        //TODO
-        return null;
-    }
+    }   
     
     private SqlExecutor<T> _appendToWhere(String appendString, Object value) {
         sqlExecutor.getQueryParts().put(StatementParts.WHERE, sqlExecutor.getQueryParts().get(StatementParts.WHERE).concat(appendString));
@@ -101,6 +95,5 @@ public class WhereExecutor<T> {
     private static final String GREATER_THAN_EQUAL = ">= ? ";
     private static final String LESS_THAN_EQUAL = "<= ? ";
     private static final String LIKE = "like ? ";
-    private static final String IN = "in (select %s";
 
 }

@@ -19,31 +19,31 @@ public class TU_SqlExecutor {
     public void testBasicSelectStatement() throws DataConnectionException {
         SqlExecutor<User> executor = new SqlExecutor<User>();
         String sql = executor.select(User.class).where("name").eq("nick").getQuery();
-        assertEquals("select * from user where name = ?;", sql);
+        assertEquals("select user.* from user where user.name = ?;", sql);
     }
 
     @Test
     public void testSelectWithAnds() throws DataConnectionException {
         SqlExecutor<User> executor = new SqlExecutor<User>();
         String sql = executor.select(User.class).where("name").eq("nick").and("password").eq("123456").getQuery();
-        assertEquals("select * from user where name = ? and password = ?;", sql);
+        assertEquals("select user.* from user where user.name = ? and user.password = ?;", sql);
     }
 
     @Test
     public void testSelectWithLike() throws DataConnectionException {
         SqlExecutor<User> executor = new SqlExecutor<User>();
         String sql = executor.select(User.class).where("name").like("%nick").and("password").eq("123456").getQuery();
-        assertEquals("select * from user where name like ? and password = ?;", sql);
+        assertEquals("select user.* from user where user.name like ? and user.password = ?;", sql);
     }
 
     @Test
     public void testSelectOrderBy() throws DataConnectionException {
         SqlExecutor<User> executor = new SqlExecutor<User>();
         String sql = executor.select(User.class).where("name").like("%nick").and("password").eq("123456").orderBy("name").asc().getQuery();
-        assertEquals("select * from user where name like ? and password = ? order by name asc;", sql);
+        assertEquals("select user.* from user where user.name like ? and user.password = ? order by name asc;", sql);
 
         sql = executor.select(User.class).where("name").like("%nick").and("password").eq("123456").orderBy("name").desc().getQuery();
-        assertEquals("select * from user where name like ? and password = ? order by name desc;", sql);
+        assertEquals("select user.* from user where user.name like ? and user.password = ? order by name desc;", sql);
     }
 
     @Test
@@ -53,7 +53,7 @@ public class TU_SqlExecutor {
         user.setPassword("123456");
         SqlExecutor<User> executor = new SqlExecutor<User>();
         String sql = executor.update(user).where("id").eq(1).getQuery();
-        assertEquals("update user set name = ?, password = ? where id = ?;", sql);
+        assertEquals("update user set name = ?, password = ? where user.id = ?;", sql);
     }
 
     @Test
@@ -70,7 +70,7 @@ public class TU_SqlExecutor {
     public void testDelete() throws DataConnectionException {
         SqlExecutor<User> executor = new SqlExecutor<User>();
         String sql = executor.delete(User.class).where("name").eq("nick").getQuery();
-        assertEquals("delete from user where name = ?;", sql);
+        assertEquals("delete from user where user.name = ?;", sql);
     }
 
     @Test
@@ -263,7 +263,7 @@ public class TU_SqlExecutor {
 
         deleteUser(user);
     }
-
+    
     public class ThreadTest implements Runnable {
         public ThreadTest(int i) {
             this.i = i;

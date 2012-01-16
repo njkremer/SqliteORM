@@ -73,7 +73,7 @@ public class MapExpression {
     /**
      * @return Returns the Sql Select String so far for the {@linkplain MapExpression}.
      */
-    public String getQuery() {
+    String getQuery() {
         StringBuilder builder = new StringBuilder();
         for (StatementParts key : queryParts.keySet()) {
             builder.append(queryParts.get(key));

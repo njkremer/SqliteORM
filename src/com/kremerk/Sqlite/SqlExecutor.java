@@ -41,7 +41,7 @@ public class SqlExecutor<T> {
     public SqlExecutor<T> select(Class<T> clazz) {
         reset();
         this.clazz = clazz;
-        queryParts.put(StatementParts.SELECT, SELECT);
+        queryParts.put(StatementParts.SELECT, String.format(SELECT, clazz.getSimpleName().toLowerCase()));
         queryParts.put(StatementParts.FROM, String.format(FROM, clazz.getSimpleName().toLowerCase()));
         statementType = StatementType.SELECT;
         return this;
@@ -53,9 +53,10 @@ public class SqlExecutor<T> {
      * @param databaseObject An object that was queried from the database that has been updated.
      * @return A {@linkplain SqlExecutor} used for function chaining.
      */
+    @SuppressWarnings("unchecked")
     public SqlExecutor<T> update(Object databaseObject) {
         reset();
-        clazz = databaseObject.getClass();
+        clazz = (Class<T>) databaseObject.getClass();
         sqlObject = databaseObject;
         queryParts.put(StatementParts.UPDATE, String.format(UPDATE, clazz.getSimpleName().toLowerCase()));
         statementType = StatementType.UPDATE;
@@ -68,9 +69,10 @@ public class SqlExecutor<T> {
      * @param databaseObject An object that is to be input into the database.
      * @return A {@linkplain SqlExecutor} used for function chaining.
      */
+    @SuppressWarnings("unchecked")
     public SqlExecutor<T> insert(T databaseObject) throws DataConnectionException {
         reset();
-        clazz = databaseObject.getClass();
+        clazz = (Class<T>) databaseObject.getClass();
         queryParts.put(StatementParts.INSERT, String.format(INSERT, clazz.getSimpleName().toLowerCase()));
         statementType = StatementType.INSERT;
         sqlObject = databaseObject;
@@ -90,7 +92,7 @@ public class SqlExecutor<T> {
      * @return A {@linkplain SqlExecutor} used for function chaining.
      * @throws DataConnectionException
      */
-    public SqlExecutor<T> delete(Class<?> clazz) throws DataConnectionException {
+    public SqlExecutor<T> delete(Class<T> clazz) throws DataConnectionException {
         reset();
         this.clazz = clazz;
         queryParts.put(StatementParts.DELETE, DELETE);
@@ -106,13 +108,20 @@ public class SqlExecutor<T> {
      * @return A {@linkplain SqlExecutor} used for function chaining.
      * @throws DataConnectionException
      */
+    @SuppressWarnings("unchecked")
     public SqlExecutor<T> delete(T databaseObject) {
         reset();
-        clazz = databaseObject.getClass();
+        clazz = (Class<T>) databaseObject.getClass();
         sqlObject = databaseObject;
         queryParts.put(StatementParts.DELETE, DELETE);
         queryParts.put(StatementParts.FROM, String.format(FROM, clazz.getSimpleName().toLowerCase()));
         statementType = StatementType.DELETE;
+        return this;
+    }
+    
+
+    public SqlExecutor<T> join(Class<?> clazz) {
+        queryParts.put(StatementParts.JOIN, queryParts.get(StatementParts.JOIN).concat(joinExecutor.join(clazz).getQuery()));
         return this;
     }
 
@@ -127,6 +136,11 @@ public class SqlExecutor<T> {
      * @throws DataConnectionException
      */
     public WhereExecutor<T> where(String field) throws DataConnectionException {
+        where(this.clazz, field);
+        return whereExecutor;
+    }
+    
+    public WhereExecutor<T> where(Class<?> clazz, String field) throws DataConnectionException {
         if (statementType == StatementType.UPDATE) {
             try {
                 prepareUpdate(field);
@@ -139,7 +153,7 @@ public class SqlExecutor<T> {
             }
         }
         whereDefined = true;
-        queryParts.put(StatementParts.WHERE, String.format(WHERE, field));
+        queryParts.put(StatementParts.WHERE, String.format(WHERE, clazz.getSimpleName().toLowerCase(), field));
         return whereExecutor;
     }
 
@@ -153,7 +167,7 @@ public class SqlExecutor<T> {
      * @return A {@linkplain WhereExecutor} to be used in conjunction with the <b>and</b> method.
      */
     public WhereExecutor<T> and(String field) {
-        queryParts.put(StatementParts.WHERE, queryParts.get(StatementParts.WHERE).concat(String.format(AND, field)));
+        queryParts.put(StatementParts.WHERE, queryParts.get(StatementParts.WHERE).concat(String.format(AND, clazz.getSimpleName().toLowerCase(), field)));
         return whereExecutor;
     }
     
@@ -281,6 +295,7 @@ public class SqlExecutor<T> {
         }
     }
     
+    
     String getQuery() throws DataConnectionException {
         StringBuilder builder = new StringBuilder();
         for (StatementParts key : queryParts.keySet()) {
@@ -310,8 +325,7 @@ public class SqlExecutor<T> {
         }
 
         while (resultSet.next()) {
-            @SuppressWarnings("unchecked")
-            T object = (T) clazz.newInstance();
+            T object = clazz.newInstance();
             for (int i = 0; i < columnCount; i++) {
                 processColumn(object, columns.get(i), resultSet);
             }
@@ -576,22 +590,23 @@ public class SqlExecutor<T> {
     private PreparedStatement statement;
     private ResultSet resultSet;
     private List<Object> values = new ArrayList<Object>();;
-    private Class<?> clazz;
+    private Class<T> clazz;
     private StatementType statementType;
     private Object sqlObject;
     private boolean whereDefined = false;
     private WhereExecutor<T> whereExecutor = new WhereExecutor<T>(this);
+    private JoinExecutor joinExecutor = new JoinExecutor();
 
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
-    private static final String SELECT = "select * ";
+    private static final String SELECT = "select %s.* ";
     private static final String FROM = "from %s ";
     private static final String SELECT_COUNT = "select count(*) as count ";
     private static final String UPDATE = "update %s ";
     private static final String INSERT = "insert into %s";
     private static final String DELETE = "delete ";
-    private static final String WHERE = "where %s ";
-    private static final String AND = "and %s ";
+    private static final String WHERE = "where %s.%s ";
+    private static final String AND = "and %s.%s ";
     private static final String OR = "or %s ";
     private static final String ORDER_BY = "order by %s ";
     private static final String ASC = "asc ";
