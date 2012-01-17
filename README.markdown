@@ -11,8 +11,7 @@ This project is designed to be a very lightweight ORM for interacting with a SQL
 1. ["Mapping" an Object to a Table](#mapping)
 1. [Slightly More Advanced "Mapping"](#advanced)
 1. [Interacting with the Database](#interacting)
-1. [Working With Non-Objects From The Database](#nonObjects)
-1. [TODOs](#todo)
+1. [More Info](#moreInfo)
 
 ***
 
@@ -165,15 +164,5 @@ for function chaining. So when looking at the JavaDocs you may want to look at t
 
 ***
 
-<a name="nonObjects"></a>
-# Working With Non-Objects From The Database
-
-***
-
-
-<a name="todo"></a>
-# TODOs
-
-1. Add support for OR in where clause
-1. Add support for more complex logic with where clause, e.g. a AND (b OR c)
-1. Add support for more complex ording, e.g. Order by a desc THEN b asc
+<a name="moreInfo"></a>
+For more information on how to use this library please see the [GitHub Wiki](https://github.com/kremerk/SqliteORM/wiki)
