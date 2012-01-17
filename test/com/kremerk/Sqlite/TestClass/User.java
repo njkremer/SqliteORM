@@ -1,4 +1,4 @@
-package com.kremerk.Sqlite;
+package com.kremerk.Sqlite.TestClass;
 
 import com.kremerk.Sqlite.Annotations.AutoIncrement;
 import com.kremerk.Sqlite.Annotations.PrimaryKey;

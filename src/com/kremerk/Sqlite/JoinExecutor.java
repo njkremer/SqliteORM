@@ -1,40 +1,45 @@
 package com.kremerk.Sqlite;
 
-import java.util.LinkedHashMap;
-
 public class JoinExecutor {
-    public JoinExecutor join(Class<?> clazz) {
-        queryParts.put(StatementParts.JOIN, String.format(JOIN, clazz.getSimpleName().toLowerCase()));
-        return this;
-    }
-    
-    public JoinExecutor on(Class<?> clazz1, String fieldName) {
-        String join = queryParts.get(StatementParts.JOIN);
-        queryParts.put(StatementParts.JOIN, join.concat(String.format(ON, clazz1.getSimpleName().toLowerCase(), fieldName)));
-        return this;
-    }
-    
-    public JoinExecutor eq(Class<?> clazz2, String fieldName) {
-        String join = queryParts.get(StatementParts.JOIN);
-        queryParts.put(StatementParts.JOIN, join.concat(String.format(EQ, clazz2.getSimpleName().toLowerCase(), fieldName)));
-        return this;
-    }
-    
-     String getQuery() {
-        StringBuilder builder = new StringBuilder();
-        for (StatementParts key : queryParts.keySet()) {
-            builder.append(queryParts.get(key));
+    /**
+     * User to represent various join types for a database.
+     */
+    public enum JoinType {
+        INNER("inner "), 
+        LEFT_OUTER("left outer "), 
+        RIGHT_OUTER("right outer ");
+        
+        JoinType(String sql) {
+            this.sql = sql;
         }
-        queryParts.clear();
-        String query = builder.toString();
-        int commaIndex = query.lastIndexOf(",");
-        int trimIndex = commaIndex == -1 ? query.length() : commaIndex;
-        return query.substring(0, trimIndex).concat(" ");
+        
+        public String getSql() {
+            return sql;
+        }
+
+        private String sql;
+    }
+
+    public JoinExecutor join(Class<?> leftClazz, String leftField, Class<?> rightClazz, String rightField) {
+        String rightClassName = rightClazz.getSimpleName().toLowerCase();
+        String leftClassName = leftClazz.getSimpleName().toLowerCase();
+        String joinTypeSql = "";
+        if (joinType != null) {
+            joinTypeSql = this.joinType.getSql();
+        }
+        query = String.format(JOIN, joinTypeSql, leftClassName, leftClassName, leftField, rightClassName, rightField);
+        return this;
     }
     
-    private final static String JOIN = "join %s ";
-    private final static String ON = "on %s.%s ";
-    private final static String EQ = "= %s.%s ";
-    
-    private LinkedHashMap<StatementParts, String> queryParts = new LinkedHashMap<StatementParts, String>();
+    public void setJoinType(JoinType joinType) {
+        this.joinType = joinType;
+    }
+
+    String getQuery() {
+        return query;
+    }
+
+    private final static String JOIN = "%sjoin %s on %s.%s = %s.%s ";
+    private JoinType joinType = null;
+    private String query;
 }

@@ -1,4 +1,4 @@
-package com.kremerk.Sqlite;
+package com.kremerk.Sqlite.TestClass;
 
 import java.util.Date;
 

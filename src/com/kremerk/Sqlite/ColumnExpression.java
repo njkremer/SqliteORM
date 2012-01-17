@@ -8,7 +8,7 @@ import java.util.LinkedHashMap;
  * 
  * <p> The idea here is to be able to return arbitrary columns and to operate on columns (such as SQLite's <a
  * href="http://www.sqlite.org/lang_datefunc.html">Date/Time Functions</a>). This class is used in conjunction with
- * {@linkplain SqlExecutor#getMap(MapExpression)} to return a list of maps. Each entry in the list is a map of the
+ * {@linkplain SqlExecutor#getColumns(ColumnExpression)} to return a list of maps. Each entry in the list is a map of the
  * specified column/field name to it's value.
  * 
  * <p> For example if my sql statement was returning something like:
@@ -27,8 +27,8 @@ import java.util.LinkedHashMap;
  * POJO that "maps" to a database table. This just lets you get a non-Object from the database and perform
  * functions on a column.
  */
-public class MapExpression {
-    MapExpression() {
+public class ColumnExpression {
+    ColumnExpression() {
         queryParts.put(StatementParts.SELECT, SELECT);
         queryParts.put(StatementParts.COLUMN, "");
     }
@@ -39,9 +39,9 @@ public class MapExpression {
      * too.
      * 
      * @param columnString The column to query.
-     * @return A {@link MapExpression} for function chaining.
+     * @return A {@link ColumnExpression} for function chaining.
      */
-    public MapExpression column(String columnString) {
+    public ColumnExpression column(String columnString) {
         queryParts.put(StatementParts.COLUMN, queryParts.get(StatementParts.COLUMN).concat(columnString + ", "));
         return this;
     }
@@ -51,9 +51,9 @@ public class MapExpression {
      * {@linkplain #column(String)}.
      * 
      * @param alias The name of the alias for the column.
-     * @return A {@link MapExpression} for function chaining.
+     * @return A {@link ColumnExpression} for function chaining.
      */
-    public MapExpression as(String alias) {
+    public ColumnExpression as(String alias) {
         String columns = queryParts.get(StatementParts.COLUMN);
         columns = columns.substring(0, columns.lastIndexOf(",")).concat(" ");
         queryParts.put(StatementParts.COLUMN, columns.concat(String.format(AS, alias)));
@@ -63,15 +63,15 @@ public class MapExpression {
     /**
      * Allows you to specify making a query distinc, which will eliminate duplicate rows in the result set.
      * 
-     * @return A {@link MapExpression} for function chaining.
+     * @return A {@link ColumnExpression} for function chaining.
      */
-    public MapExpression distinct() {
+    public ColumnExpression distinct() {
         queryParts.put(StatementParts.SELECT, SELECT + DISTINCT);
         return this;
     }
 
     /**
-     * @return Returns the Sql Select String so far for the {@linkplain MapExpression}.
+     * @return Returns the Sql Select String so far for the {@linkplain ColumnExpression}.
      */
     String getQuery() {
         StringBuilder builder = new StringBuilder();

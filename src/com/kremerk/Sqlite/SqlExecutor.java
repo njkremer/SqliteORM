@@ -17,6 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.kremerk.Sqlite.JoinExecutor.JoinType;
 import com.kremerk.Sqlite.Annotations.AutoIncrement;
 import com.kremerk.Sqlite.Annotations.PrimaryKey;
 
@@ -120,9 +121,55 @@ public class SqlExecutor<T> {
     }
     
 
-    public SqlExecutor<T> join(Class<?> clazz) {
-        queryParts.put(StatementParts.JOIN, queryParts.get(StatementParts.JOIN).concat(joinExecutor.join(clazz).getQuery()));
+    /**
+     * Used to do a SQL Join with another POJO/Table.
+     * 
+     * <p>A simple example of using joining to get all of a user's things, given the user's name:
+     * 
+     * <p>
+     * <pre>
+     * new SqlStatement().select(Thing.class).join(User.class, "id", Thing.class, "userId")
+     *                                       .where(User.class, "name").eq("Bob").getList()
+     *</pre> 
+     * 
+     * @param leftClazz The (left) class/table you're joining to.
+     * @param leftField The field in the left class/table you're joining on.
+     * @param rightClazz The (right) class/table you're joining from.
+     * @param rightField The field in the right class/table you're joining on.
+     * @return A {@linkplain SqlExecutor} used for function chaining.
+     */
+    public SqlExecutor<T> join(Class<?> leftClazz, String leftField, Class<?> rightClazz, String rightField) {
+        if(firstJoin) {
+            queryParts.put(StatementParts.JOIN, "");
+            firstJoin = false;
+        }
+        this.joinExecutor.join(leftClazz, leftField, rightClazz, rightField);
+        String join = joinExecutor.getQuery();
+        queryParts.put(StatementParts.JOIN, queryParts.get(StatementParts.JOIN).concat(join));
         return this;
+    }
+    
+    /**
+     * Used to do a SQL Join with another POJO/Table, with specifying the {@linkplain JoinType}
+     *  
+     * <p>A simple example of using joining to get all of a user's things, given the user's name:
+     * 
+     * <p>
+     * <pre>
+     * new SqlStatement().select(Thing.class).join(User.class, "id", Thing.class, "userId")
+     *                                       .where(User.class, "name").eq("Bob").getList()
+     *</pre> 
+     *
+     * @param leftClazz The (left) class/table you're joining to.
+     * @param leftField The field in the left class/table you're joining on.
+     * @param rightClazz The (right) class/table you're joining from.
+     * @param rightField The field in the right class/table you're joining on.
+     * @param joinType The {@linkplain JoinType} that the join should use.
+     * @return A {@linkplain SqlExecutor} used for function chaining.
+     */
+    public SqlExecutor<T> join(Class<?> leftClazz, String leftField, Class<?> rightClazz, String rightField, JoinType joinType) {
+        joinExecutor.setJoinType(joinType);
+        return join(leftClazz, leftField, rightClazz, rightField);
     }
 
     /**
@@ -136,10 +183,23 @@ public class SqlExecutor<T> {
      * @throws DataConnectionException
      */
     public WhereExecutor<T> where(String field) throws DataConnectionException {
-        where(this.clazz, field);
-        return whereExecutor;
+        return where(this.clazz, field);
     }
     
+    /**
+     * Used to start a "where clause" when querying/updating/deleting for an Object from the database. This will
+     * return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database
+     * call. Additional fields can be added to your "where clause" by using the
+     * {@linkplain SqlExecutor#and(String)} method.
+     * 
+     * <P>This version is to explicitly state what Entity the field belongs to. This is typically needed when doing
+     * a {@linkplain SqlExecutor#join(Class, String, Class, String) join}.
+     * 
+     * @param clazz The class who the field belongs to.
+     * @param field The field of the object/database table you want to limit by.
+     * @return a {@linkplain WhereExecutor} to be used in conjunction with the <b>where</b> method.
+     * @throws DataConnectionException
+     */
     public WhereExecutor<T> where(Class<?> clazz, String field) throws DataConnectionException {
         if (statementType == StatementType.UPDATE) {
             try {
@@ -149,7 +209,7 @@ public class SqlExecutor<T> {
                 throw e;
             }
             catch (Exception e) {
-                throw new DataConnectionException("Error running update");
+                throw new DataConnectionException("Error running update", e);
             }
         }
         whereDefined = true;
@@ -167,6 +227,23 @@ public class SqlExecutor<T> {
      * @return A {@linkplain WhereExecutor} to be used in conjunction with the <b>and</b> method.
      */
     public WhereExecutor<T> and(String field) {
+        return and(this.clazz, field);
+    }
+    
+    /**
+     * Used to continue a "where clause" when querying/updating/deleting for an Object from the database. This will
+     * return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database
+     * call. Additional fields can be added to your "where clause" by using the
+     * {@linkplain SqlExecutor#and(String)} method.
+     * 
+     * <P>This version is to explicitly state what Entity the field belongs to. This is typically needed when doing
+     * a {@linkplain SqlExecutor#join(Class, String, Class, String) join}.
+     * 
+     * @param clazz The class who the field belongs to.
+     * @param field Additional fields of the object/database table you want to limit by.
+     * @return A {@linkplain WhereExecutor} to be used in conjunction with the <b>and</b> method.
+     */
+    public WhereExecutor<T> and(Class<?> clazz, String field) {
         queryParts.put(StatementParts.WHERE, queryParts.get(StatementParts.WHERE).concat(String.format(AND, clazz.getSimpleName().toLowerCase(), field)));
         return whereExecutor;
     }
@@ -180,7 +257,7 @@ public class SqlExecutor<T> {
      * @param field Additional fields of the object/database table you want to limit by.
      * @return A {@linkplain WhereExecutor} to be used in conjunction with the <b>and</b> method.
      */
-    public WhereExecutor<T> o(String field) {
+    public WhereExecutor<T> or(String field) {
         queryParts.put(StatementParts.WHERE, queryParts.get(StatementParts.WHERE).concat(String.format(OR, field)));
         return whereExecutor;
     }
@@ -268,24 +345,18 @@ public class SqlExecutor<T> {
 
     /**
      * Returns a {@linkplain List} of {@linkplain Map Maps} which map from a field/database table column for the
-     * resulting query along with the passed in {@linkplain MapExpression}.
+     * resulting query along with the passed in {@linkplain ColumnExpression}.
      * 
      * <p> The value of the map is of type {@linkplain Object} and will need to be cast to the type of value you're
-     * expecting from the fields/columns you specified in your {@linkplain MapExpression}.
+     * expecting from the fields/columns you specified in your {@linkplain ColumnExpression}.
      * 
-     * @param mapExpression A map expression to specify what columns you want back from the database.
+     * @param columnExpression A map expression to specify what columns you want back from the database.
      * @return A {@linkplain List} of {@linkplain Map Maps} which are the result of the query with the passed in
-     * {@linkplain MapExpression}.
+     * {@linkplain ColumnExpression}.
      * @throws DataConnectionException
      */
-    public List<Map<String, Object>> getMap(MapExpression mapExpression) throws DataConnectionException {
-        /*
-         * 1.) Take the map expression and replace the QUERY part of the sql statement with the mapExpressions's
-         * .getQuery() 2.) Execute the query 3.) Process the results, building an array of maps of String to
-         * Object. * Each array element is a row returned * Each map entry is a map of columnName (alias in this
-         * case) to Value.
-         */
-        this.queryParts.put(StatementParts.SELECT, mapExpression.getQuery());
+    public List<Map<String, Object>> getColumns(ColumnExpression columnExpression) throws DataConnectionException {
+        this.queryParts.put(StatementParts.SELECT, columnExpression.getQuery());
         executeStatement();
         try {
             return processMapResults();
@@ -386,13 +457,10 @@ public class SqlExecutor<T> {
         boolean first = true;
         queryParts.put(StatementParts.SET, "");
         for (Field classField : clazz.getDeclaredFields()) {
-            String methodName = classField.getType() == Boolean.class ? "is" : "get" + capitalize(classField.getName().toLowerCase());
-            String fieldName = classField.getName().toLowerCase();
+            String methodName = (classField.getType() == Boolean.class ? "is" : "get") + capitalize(classField.getName());
+            String fieldName = classField.getName();
 
-            if (!fieldName.equals(field)) {
-                if (classField.getAnnotation(AutoIncrement.class) != null) {
-                    throw new DataConnectionException("The field " + classField.getName() + " is an auto incremented field and should not be updated.");
-                }
+            if (classField.getAnnotation(AutoIncrement.class) == null) {
                 try {
                     Object value = clazz.getDeclaredMethod(methodName, (Class<?>[]) null).invoke(sqlObject, (Object[]) null);
                     if (first) {
@@ -537,6 +605,13 @@ public class SqlExecutor<T> {
                 statement.execute();
             }
         }
+        catch(SQLException e) {
+            System.out.println(e.getErrorCode());
+            if(e.getMessage().contains("PRIMARY KEY must be unique")) {
+                throw new DataConnectionException("A @PrimaryKey needs to be defined on the class '"  + this.clazz.getSimpleName() + "' , since there is a primary key in the database.", e);
+            }
+            throw new DataConnectionException("Error executoing sql statement", e);
+        }
         catch (Exception e) {
             throw new DataConnectionException("Error executing sql statement", e);
         }
@@ -594,6 +669,7 @@ public class SqlExecutor<T> {
     private StatementType statementType;
     private Object sqlObject;
     private boolean whereDefined = false;
+    private boolean firstJoin = true;
     private WhereExecutor<T> whereExecutor = new WhereExecutor<T>(this);
     private JoinExecutor joinExecutor = new JoinExecutor();
 

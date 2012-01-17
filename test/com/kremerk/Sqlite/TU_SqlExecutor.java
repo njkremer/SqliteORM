@@ -2,7 +2,6 @@ package com.kremerk.Sqlite;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.fail;
 
 import java.util.Calendar;
 import java.util.List;
@@ -12,6 +11,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
+
+import com.kremerk.Sqlite.TestClass.AccessGroup;
+import com.kremerk.Sqlite.TestClass.TestObject;
+import com.kremerk.Sqlite.TestClass.User;
+import com.kremerk.Sqlite.TestClass.UserAccessGroup;
 
 public class TU_SqlExecutor {
 
@@ -71,6 +75,27 @@ public class TU_SqlExecutor {
         SqlExecutor<User> executor = new SqlExecutor<User>();
         String sql = executor.delete(User.class).where("name").eq("nick").getQuery();
         assertEquals("delete from user where user.name = ?;", sql);
+    }
+    
+    @Test
+    public void testOneJoin() throws DataConnectionException {
+        SqlExecutor<User> executor = new SqlExecutor<User>();
+        String sql = executor.select(User.class)
+            .join(UserAccessGroup.class, "userId", User.class, "id")
+            .where(UserAccessGroup.class, "userId").eq(5).getQuery();
+        assertEquals("select user.* from user join useraccessgroup on useraccessgroup.userId = user.id where useraccessgroup.userId = ?;", sql);
+        
+    }
+    
+    @Test
+    public void testMultipeJoins() throws DataConnectionException {
+        SqlExecutor<User> executor = new SqlExecutor<User>();
+        String sql = executor.select(User.class)
+            .join(UserAccessGroup.class, "userId", User.class, "id")
+            .join(AccessGroup.class, "id", UserAccessGroup.class, "groupId")
+            .where(AccessGroup.class, "id").eq(5).getQuery();
+        assertEquals("select user.* from user join useraccessgroup on useraccessgroup.userId = user.id join accessgroup on accessgroup.id = useraccessgroup.groupId where accessgroup.id = ?;", sql);
+        
     }
 
     @Test
@@ -165,6 +190,36 @@ public class TU_SqlExecutor {
         u.setId(new Long(45));
         e.update(u).execute();
     }
+    
+    @Test
+    public void testJoinInDb() throws DataConnectionException {
+        createUser("Nick");
+        createGroup("Admin");
+        createGroup("PowerUser");
+        createGroup("User");
+        
+        User nick = e.select(User.class).getList().get(0);
+        List<AccessGroup> groups = groupExecutor.select(AccessGroup.class).getList();
+        
+        createUserGroupLink(nick.getId(), groups.get(0).getId());
+        createUserGroupLink(nick.getId(), groups.get(1).getId());
+        
+        List<AccessGroup> nicksGroups = groupExecutor.select(AccessGroup.class)
+        .join(UserAccessGroup.class, "groupId", AccessGroup.class, "id")
+        .join(User.class, "id", UserAccessGroup.class, "userId")
+        .where(User.class, "name").eq("Nick").getList();
+        
+        assertEquals(2, nicksGroups.size());
+        assertEquals("Admin", nicksGroups.get(0).getName());
+        assertEquals("PowerUser", nicksGroups.get(1).getName());
+        
+        deleteUser(nick);
+        deleteGroup("Admin");
+        deleteGroup("PowerUser");
+        deleteGroup("User");
+        deleteUserGroupLinks(nick.getId());
+        
+    }
 
     @Test
     public void testSettingNullDataType() throws DataConnectionException {
@@ -176,23 +231,6 @@ public class TU_SqlExecutor {
         user = e.select(User.class).where("name").like("N%").getList().get(0);
         assertNull(user.getPassword());
 
-        deleteUser(user);
-    }
-
-    @Test
-    public void testUpdatingAnAutoIncrementedField() throws DataConnectionException {
-        createUser("Nick");
-
-        User user = e.select(User.class).where("name").like("N%").getList().get(0);
-        user.setId(new Long(55));
-        try {
-            e.update(user).where("name").eq("name").execute();
-            fail("This method should have thrown an error by now");
-        }
-        catch (DataConnectionException e) {
-            // pass
-        }
-        user.setId(new Long(1));
         deleteUser(user);
     }
 
@@ -209,7 +247,7 @@ public class TU_SqlExecutor {
     public void testGettingMapInDb() throws DataConnectionException {
         createUser("Nick");
 
-        List<Map<String, Object>> map = e.select(User.class).where("name").eq("Nick").getMap(new MapExpression().column("name").as("name1").column("id").as("userid"));
+        List<Map<String, Object>> map = e.select(User.class).where("name").eq("Nick").getColumns(new ColumnExpression().column("name").as("name1").column("id").as("userid"));
 
         assertEquals("Nick", map.get(0).get("name1"));
         assertEquals(1, map.get(0).get("userid"));
@@ -243,8 +281,29 @@ public class TU_SqlExecutor {
         assertEquals("Hello World!", test2.getStringType());
         assertEquals(calendar.getTime().getTime(), test2.getDateType().getTime());
         assertEquals(true, test2.isBooleanType());
+        
+        calendar.add(Calendar.HOUR, 1);
+        test2.setDateType(calendar.getTime());
+        test2.setDoubleType(25.6);
+        test2.setFloatType(6.28318f);
+        test2.setIntType(100);
+        test2.setLongType(12345l);
+        test2.setStringType("Goodbye World!");
+        test2.setBooleanType(false);
+        
+        te.update(test2).where("intType").eq(42).execute();
+        
+        test = te.select(TestObject.class).getList().get(0);
+        
+        assertEquals(25.6, test.getDoubleType(), 0.0);
+        assertEquals(new Float(6.28318f), test.getFloatType());
+        assertEquals(new Integer(100), test.getIntType());
+        assertEquals(new Long(12345l), test.getLongType());
+        assertEquals("Goodbye World!", test.getStringType());
+        assertEquals(calendar.getTime().getTime(), test.getDateType().getTime());
+        assertEquals(false, test.isBooleanType());
 
-        te.delete(test).where("intType").eq(42).execute();
+        te.delete(TestObject.class).where("intType").eq(100).execute();
 
     }
 
@@ -296,8 +355,31 @@ public class TU_SqlExecutor {
     public void deleteUser(User user) throws DataConnectionException {
         e.delete(user).execute();
     }
+    
+    public void createGroup(String name) throws DataConnectionException {
+        AccessGroup group = new AccessGroup();
+        group.setName(name);
+        groupExecutor.insert(group).execute();
+    }
+    
+    public void deleteGroup(String name) throws DataConnectionException {
+        groupExecutor.delete(AccessGroup.class).where("name").eq(name).execute();
+    }
+    
+    public void createUserGroupLink(long userId, long groupId) throws DataConnectionException {
+        UserAccessGroup uag = new UserAccessGroup();
+        uag.setGroupId(groupId);
+        uag.setUserId(userId);
+        uagExecutor.insert(uag).execute();
+    }
+    
+    public void deleteUserGroupLinks(long userId) throws DataConnectionException {
+        uagExecutor.delete(UserAccessGroup.class).where("userId").eq(userId).execute();
+    }
 
     private SqlExecutor<User> e = new SqlExecutor<User>();
-    private SqlExecutor<com.kremerk.Sqlite.TestObject> te = new SqlExecutor<com.kremerk.Sqlite.TestObject>();
+    private SqlExecutor<AccessGroup> groupExecutor = new SqlExecutor<AccessGroup>();
+    private SqlExecutor<UserAccessGroup> uagExecutor = new SqlExecutor<UserAccessGroup>();
+    private SqlExecutor<com.kremerk.Sqlite.TestClass.TestObject> te = new SqlExecutor<com.kremerk.Sqlite.TestClass.TestObject>();
 
 }

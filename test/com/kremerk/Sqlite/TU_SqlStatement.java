@@ -7,6 +7,7 @@ import org.junit.Test;
 import com.kremerk.Sqlite.DataConnectionException;
 import com.kremerk.Sqlite.DataConnectionManager;
 import com.kremerk.Sqlite.SqlStatement;
+import com.kremerk.Sqlite.TestClass.User;
 
 public class TU_SqlStatement {
 
