@@ -8,8 +8,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -20,6 +18,7 @@ import java.util.Map;
 import com.kremerk.Sqlite.JoinExecutor.JoinType;
 import com.kremerk.Sqlite.Annotations.AutoIncrement;
 import com.kremerk.Sqlite.Annotations.PrimaryKey;
+import com.kremerk.Sqlite.utils.DateUtils;
 
 /**
  * Used to continue a {@linkplain SqlStatement} to interact with the database.
@@ -383,7 +382,7 @@ public class SqlExecutor<T> {
         return this.queryParts;
     }
 
-    private List<T> processResults() throws SQLException, InstantiationException, IllegalAccessException, SecurityException, IllegalArgumentException, NoSuchMethodException, InvocationTargetException, NoSuchFieldException, ParseException {
+    private List<T> processResults() throws SQLException, InstantiationException, IllegalAccessException, SecurityException, IllegalArgumentException, NoSuchMethodException, InvocationTargetException, NoSuchFieldException, DataConnectionException {
         List<T> objects = new ArrayList<T>();
         int columnCount = resultSet.getMetaData().getColumnCount();
         ArrayList<String> columns = new ArrayList<String>();
@@ -542,7 +541,7 @@ public class SqlExecutor<T> {
                 statement.setDouble(i + 1, (Double) object);
             }
             else if (object instanceof Date) {
-                String date = DATE_FORMAT.format((Date) object);
+                String date = DateUtils.getDatabaseFormattedStringFromDate((Date) object);
                 statement.setObject(i + 1, date);
             }
             else if (object instanceof Boolean) {
@@ -617,7 +616,7 @@ public class SqlExecutor<T> {
         }
     }
 
-    private void processColumn(Object object, String columnName, ResultSet resultSet) throws SQLException, SecurityException, NoSuchMethodException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, NoSuchFieldException, ParseException {
+    private void processColumn(Object object, String columnName, ResultSet resultSet) throws SQLException, SecurityException, NoSuchMethodException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, NoSuchFieldException, DataConnectionException {
         Object value = null;
         Class<?> type = clazz.getDeclaredField(columnName).getType();
         if (type == String.class) {
@@ -636,7 +635,7 @@ public class SqlExecutor<T> {
             value = resultSet.getBoolean(columnName);
         }
         else if (type == Date.class) {
-            value = DATE_FORMAT.parse(resultSet.getString(columnName));
+            value = DateUtils.getDateFromDatabaseFormattedString(resultSet.getString(columnName));
         }
         else if (type == Long.class || type == Long.TYPE) {
             value = resultSet.getLong(columnName);
@@ -672,8 +671,6 @@ public class SqlExecutor<T> {
     private boolean firstJoin = true;
     private WhereExecutor<T> whereExecutor = new WhereExecutor<T>(this);
     private JoinExecutor joinExecutor = new JoinExecutor();
-
-    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     private static final String SELECT = "select %s.* ";
     private static final String FROM = "from %s ";

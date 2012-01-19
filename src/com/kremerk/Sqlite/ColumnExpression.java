@@ -28,7 +28,7 @@ import java.util.LinkedHashMap;
  * functions on a column.
  */
 public class ColumnExpression {
-    ColumnExpression() {
+    public ColumnExpression() {
         queryParts.put(StatementParts.SELECT, SELECT);
         queryParts.put(StatementParts.COLUMN, "");
     }
