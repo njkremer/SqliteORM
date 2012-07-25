@@ -257,7 +257,20 @@ public class SqlExecutor<T> {
      * @return A {@linkplain WhereExecutor} to be used in conjunction with the <b>and</b> method.
      */
     public WhereExecutor<T> or(String field) {
-        queryParts.put(StatementParts.WHERE, queryParts.get(StatementParts.WHERE).concat(String.format(OR, field)));
+        return or(this.clazz, field);
+    }
+    
+    /**
+     * Used to continue a "where clause" when querying/updating/deleting for an Object from the database. This will
+     * return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database
+     * call. Additional fields can be added to your "where clause" by using the
+     * {@linkplain SqlExecutor#and(String)} method.
+     * 
+     * @param field Additional fields of the object/database table you want to limit by.
+     * @return A {@linkplain WhereExecutor} to be used in conjunction with the <b>and</b> method.
+     */
+    public WhereExecutor<T> or(Class<?> clazz, String field) {
+        queryParts.put(StatementParts.WHERE, queryParts.get(StatementParts.WHERE).concat(String.format(OR, clazz.getSimpleName().toLowerCase(), field)));
         return whereExecutor;
     }
 
@@ -680,7 +693,7 @@ public class SqlExecutor<T> {
     private static final String DELETE = "delete ";
     private static final String WHERE = "where %s.%s ";
     private static final String AND = "and %s.%s ";
-    private static final String OR = "or %s ";
+    private static final String OR = "or %s.%s ";
     private static final String ORDER_BY = "order by %s ";
     private static final String ASC = "asc ";
     private static final String DESC = "desc ";
