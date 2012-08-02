@@ -45,5 +45,10 @@ public class TU_JoinExecutor {
         
         assertEquals("right outer join useraccessgroup on useraccessgroup.userId = user.id ", joinExecutor.getQuery());
     }
+    
+    @Test
+    public void testEnum() {
+        JoinType j = JoinType.valueOf("INNER");
+    }
 
 }

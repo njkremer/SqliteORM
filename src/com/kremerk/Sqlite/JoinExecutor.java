@@ -1,6 +1,7 @@
 package com.kremerk.Sqlite;
 
 public class JoinExecutor {
+    
     /**
      * User to represent various join types for a database.
      */
