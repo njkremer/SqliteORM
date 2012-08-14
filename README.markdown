@@ -1,5 +1,9 @@
 # SqliteORM - A Lightweight ORM For SQLite in Java
 
+## Update 8/13/2012
+
+Support has now been added for One-To-Many relationships.
+
 ## Quicklinks:
 * [API JavaDoc](http://kremerk.github.com/SqliteORM/javadoc/)
 * [GitHub Wiki](https://github.com/kremerk/SqliteORM/wiki)
