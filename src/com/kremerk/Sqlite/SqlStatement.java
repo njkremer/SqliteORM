@@ -8,18 +8,18 @@ import com.kremerk.Sqlite.Annotations.PrimaryKey;
  * database. A {@linkplain SqlExecutor} is used to write out the rest of the statement.
  * 
  * <p> Typically a {@linkplain SqlExecutor} isn't created on it's own to interact with the database since this
- * class creates a new instance of a {@linkplain SqlExecutor} is returned by all of the methods of this class.
+ * class creates a new instance of a {@linkplain SqlExecutor} that is returned by all of the methods of this class.
  * 
  */
 public class SqlStatement {
-
+    
     /**
      * Returns a new instance of {@linkplain SqlExecutor} to be used for retrieving an Object out of the database.
      * 
      * @param clazz A reference to the Object.class that you are retrieving from the database.
      * @return new {@linkplain SqlExecutor} used to retrieve an object from the database.
      */
-    public <T> SqlExecutor<T> select(Class<T> clazz) {
+    public static <T> SqlExecutor<T> select(Class<T> clazz) {
         return new SqlExecutor<T>().select(clazz);
     }
 
@@ -33,7 +33,7 @@ public class SqlStatement {
      * @return new {@linkplain SqlExecutor} used to update an object in the database.
      * @throws DataConnectionException
      */
-    public <T> SqlExecutor<T> update(T databaseObject) {
+    public static <T> SqlExecutor<T> update(T databaseObject) {
         return new SqlExecutor<T>().update(databaseObject);
     }
 
@@ -48,7 +48,7 @@ public class SqlStatement {
      * @return new {@linkplain SqlExecutor} used to insert an object into the database.
      * @throws DataConnectionException
      */
-    public <T> SqlExecutor<T> insert(T databaseObject) throws DataConnectionException {
+    public static <T> SqlExecutor<T> insert(T databaseObject) throws DataConnectionException {
         return new SqlExecutor<T>().insert(databaseObject);
     }
 
@@ -59,7 +59,7 @@ public class SqlStatement {
      * @return new {@linkplain SqlExecutor} used to delete a record in the database.
      * @throws DataConnectionException
      */
-    public <T> SqlExecutor<T> delete(Class<T> clazz) throws DataConnectionException {
+    public static <T> SqlExecutor<T> delete(Class<T> clazz) throws DataConnectionException {
         return new SqlExecutor<T>().delete(clazz);
     }
 
@@ -73,8 +73,18 @@ public class SqlStatement {
      * @return new {@linkplain SqlExecutor} used to delete an object in the database.
      * @throws DataConnectionException
      */
-    public <T> SqlExecutor<T> delete(T databaseObject) {
+    public static <T> SqlExecutor<T> delete(T databaseObject) {
         return new SqlExecutor<T>().delete(databaseObject);
+    }
+    
+    /**
+     * @deprecated As of 8/13/2012 the creation of a SqlStatement is deprecated in favor of using the static methods off of the 
+     * {@link SqlStatement} class. The methods will continue to work but you will get compiler warnings to access the methods
+     * in a static way.
+     */
+    @Deprecated
+    public SqlStatement() {
+        
     }
 
 }

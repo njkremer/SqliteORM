@@ -14,7 +14,7 @@ public class TU_SqlStatement {
     @Test
     public void testSelect() throws DataConnectionException {
         createUser("Nick");
-        User u = stmt.select(User.class).getList().get(0);
+        User u = SqlStatement.select(User.class).getList().get(0);
 
         assertEquals("Nick", u.getName());
 
@@ -24,19 +24,19 @@ public class TU_SqlStatement {
     @Test
     public void testSelectCount() throws DataConnectionException {
         createUser("Nick");
-        assertEquals(1, stmt.select(User.class).getCount());
-        deleteUser(stmt.select(User.class).getList().get(0));
+        assertEquals(1, SqlStatement.select(User.class).getCount());
+        deleteUser(SqlStatement.select(User.class).getList().get(0));
     }
 
     @Test
     public void testUpdate() throws DataConnectionException {
         createUser("Nick");
-        User u = stmt.select(User.class).getList().get(0);
+        User u = SqlStatement.select(User.class).getList().get(0);
 
         u.setName("John");
-        stmt.update(u).execute();
+        SqlStatement.update(u).execute();
 
-        User u2 = stmt.select(User.class).where("name").eq("John").getList().get(0);
+        User u2 = SqlStatement.select(User.class).where("name").eq("John").getList().get(0);
         assertEquals("John", u2.getName());
 
         deleteUser(u);
@@ -47,12 +47,11 @@ public class TU_SqlStatement {
         User user = new User();
         user.setName(name);
         user.setPassword("123456");
-        stmt.insert(user).execute();
+        SqlStatement.insert(user).execute();
     }
 
     public void deleteUser(User user) throws DataConnectionException {
-        stmt.delete(user).execute();
+        SqlStatement.delete(user).execute();
     }
-
-    private SqlStatement stmt = new SqlStatement();
+    
 }

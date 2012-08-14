@@ -48,6 +48,7 @@ public class TU_JoinExecutor {
     
     @Test
     public void testEnum() {
+        @SuppressWarnings("unused")
         JoinType j = JoinType.valueOf("INNER");
     }
 

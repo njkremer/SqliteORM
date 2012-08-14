@@ -1,8 +1,11 @@
 package com.kremerk.Sqlite;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -17,6 +20,7 @@ import java.util.Map;
 
 import com.kremerk.Sqlite.JoinExecutor.JoinType;
 import com.kremerk.Sqlite.Annotations.AutoIncrement;
+import com.kremerk.Sqlite.Annotations.OneToMany;
 import com.kremerk.Sqlite.Annotations.PrimaryKey;
 import com.kremerk.Sqlite.utils.DateUtils;
 
@@ -169,6 +173,57 @@ public class SqlExecutor<T> {
     public SqlExecutor<T> join(Class<?> leftClazz, String leftField, Class<?> rightClazz, String rightField, JoinType joinType) {
         joinExecutor.setJoinType(joinType);
         return join(leftClazz, leftField, rightClazz, rightField);
+    }
+    
+    
+//    User {
+//        @OneToMany(userId) // the parameter is the foreignKey in the AccessGroup table
+//        private List<AccessGroup> accessGroup;
+//        }
+//
+//        Or
+//
+//        User {
+//        @ManyToMany(userId, groupId) // maybe the go in order of this object's foreign key, then the return objects foreign key... depends on how much "auto magical" stuff we want to do...
+//        private List<AccessGroup> accessGroup;
+//        // another option would be to spell it all out... @ManyToMany(id, userId, id, groupId) first two are the user's id and it's foreign key in the "junction table" then the accessGroups id, and it's foreign key in the junction table)
+//        }
+//    assertEquals("select thing.* from thing join user on user.id = thing.userId", sql);
+    /**
+     * Allows to select a {@linkplain List} of Objects of type T (as specified by class type passed into
+     * {@linkplain SqlExecutor#select(Class)}) from the POJO passed into this method. The POJO that is passed in must have
+     * a {@linkplain OneToMany} relationship setup in it to property have this method work.
+     * 
+     * <p>You can use the returned {@linkplain SqlExecutor} object to limit the resulting list by chaining a {@linkplain SqlExecutor#where(String) where} clause after this method.
+     * 
+     * <p> Example usage would be:
+     * 
+     * <pre>
+     * User nick = new SqlStatement().select(User.class).where("name").eq("Nick");
+     * List&lt;Thing&gt; nicksThings = new SqlStatement().select(Thing.class).from(nick).getList();
+     * </pre>
+     * 
+     * <p>If you only wanted the things where it's value was 5 you could do:
+     * 
+     * <pre>
+     * User nick = new SqlStatement().select(User.class).where("name").eq("Nick");
+     * List&lt;Thing&gt; nicksThings = new SqlStatement().select(Thing.class).from(nick).where("value").eq(5).getList();
+     * </pre>
+     * 
+     * <p>See {@link OneToMany} for more information on setting up this relationship.
+     */
+    public SqlExecutor<T> from(Object object) throws DataConnectionException {
+        String objectPk = this.getPkField(object.getClass());
+        String thisFk = this.getFkField(object.getClass());
+        
+        if (objectPk == null) {
+            throw new DataConnectionException("pkField on the target object couldn't be found... it's probably not declared on the object. To use this method the target object must have a PrimaryKey defined.");
+        }
+        if(thisFk == null) {
+            throw new DataConnectionException(String.format("Either a OneToMany relationship could not be found on the %s or the declared OneToMany field's return type is not a list of type %s", object.getClass(), this.clazz));
+        }
+
+        return join(object.getClass(), objectPk, this.clazz, thisFk);
     }
 
     /**
@@ -354,6 +409,15 @@ public class SqlExecutor<T> {
             throw new DataConnectionException("An error occured when trying to get the list of " + clazz.getSimpleName() + " objects", e);
         }
     }
+    
+    /**
+     * A convenience method to return the first object of a given query which would normally be returned by {@link SqlExecutor#getList}.
+     * @return An object of type T that is the result of querying the database.
+     * @throws DataConnectionException
+     */
+    public T getFirst() throws DataConnectionException {
+        return getList().get(0);
+    }
 
     /**
      * Returns a {@linkplain List} of {@linkplain Map Maps} which map from a field/database table column for the
@@ -472,7 +536,8 @@ public class SqlExecutor<T> {
             String methodName = (classField.getType() == Boolean.class ? "is" : "get") + capitalize(classField.getName());
             String fieldName = classField.getName();
 
-            if (classField.getAnnotation(AutoIncrement.class) == null) {
+            boolean fieldShouldBeInUpdateStatement = !classField.isAnnotationPresent(AutoIncrement.class) && !classField.isAnnotationPresent(OneToMany.class);
+            if (fieldShouldBeInUpdateStatement) {
                 try {
                     Object value = clazz.getDeclaredMethod(methodName, (Class<?>[]) null).invoke(sqlObject, (Object[]) null);
                     if (first) {
@@ -504,9 +569,9 @@ public class SqlExecutor<T> {
         for (Field field : clazz.getDeclaredFields()) {
             String methodName = field.getType() == Boolean.class ? "is" + capitalize(field.getName()) : "get" + capitalize(field.getName());
             String fieldName = field.getName();
-            // We don't want to include the auto increment in the create
-            // statement.
-            if (field.getAnnotation(AutoIncrement.class) == null) {
+            // We don't want to include the auto increment in the create statement.
+            boolean fieldShouldBeInCreateStatement = !field.isAnnotationPresent(AutoIncrement.class) && !field.isAnnotationPresent(OneToMany.class);
+            if (fieldShouldBeInCreateStatement) {
                 try {
                     Object value = clazz.getDeclaredMethod(methodName, (Class<?>[]) null).invoke(sqlObject, (Object[]) null);
                     if (!first) {
@@ -569,10 +634,11 @@ public class SqlExecutor<T> {
         }
     }
 
-    private String getPkField() {
+    private String getPkField(Class<?> clazz) {
         String pkField = null;
-        for (Field field : this.clazz.getDeclaredFields()) {
-            if (field.getAnnotation(PrimaryKey.class) != null) {
+        Field[] fields = clazz.getDeclaredFields();
+        for (Field field : fields) {
+            if (field.isAnnotationPresent(PrimaryKey.class)) {
                 pkField = field.getName();
             }
         }
@@ -587,6 +653,26 @@ public class SqlExecutor<T> {
             throw new DataConnectionException("Could not get pkValue");
         }
     }
+    
+    private String getFkField(Class<?> clazz) throws DataConnectionException {
+        String fkField = null;
+        Field[] fields = clazz.getDeclaredFields();
+        for(Field field : fields) {
+            Annotation annotaion = field.getAnnotation(OneToMany.class);
+            if (annotaion != null) {
+                Class<?> targetClazz = field.getType();
+                if(targetClazz != List.class) {
+                    throw new DataConnectionException("The return type of a OneToMany relationship must be a List Type");
+                }
+                ParameterizedType genericType = (ParameterizedType) field.getGenericType();
+                Type[] types = genericType.getActualTypeArguments();
+                if((Class<?>) types[0] == this.clazz) {
+                    fkField = ((OneToMany) annotaion).value();
+                }
+            }
+        }
+        return fkField;
+    }
 
     private void executeStatement() throws DataConnectionException {
         try {
@@ -594,10 +680,9 @@ public class SqlExecutor<T> {
             if (connection == null) {
                 throw new DataConnectionException("Connection is not initialized");
             }
-            // Try to defined the where based on if there is an auto incremented
-            // id on the table (acting as pk).
+            // Try to define the where based on if there is a pk field defined.
             if (!whereDefined && (statementType == StatementType.UPDATE || statementType == StatementType.DELETE)) {
-                String pkField = getPkField();
+                String pkField = getPkField(this.clazz);
                 Object pkValue = getPkValue(pkField);
                 if (pkField == null) {
                     throw new DataConnectionException("pkField couldn't be found... it's probably not declared on the object.");

@@ -16,6 +16,7 @@ import com.kremerk.Sqlite.TestClass.AccessGroup;
 import com.kremerk.Sqlite.TestClass.TestObject;
 import com.kremerk.Sqlite.TestClass.User;
 import com.kremerk.Sqlite.TestClass.UserAccessGroup;
+import com.kremerk.Sqlite.TestClass.Thing;
 
 public class TU_SqlExecutor {
 
@@ -96,6 +97,30 @@ public class TU_SqlExecutor {
             .where(AccessGroup.class, "id").eq(5).getQuery();
         assertEquals("select user.* from user join useraccessgroup on useraccessgroup.userId = user.id join accessgroup on accessgroup.id = useraccessgroup.groupId where accessgroup.id = ?;", sql);
         
+    }
+    
+    @Test
+    public void testAOneToManyRelationship() throws DataConnectionException {
+        SqlExecutor<Thing> thingExectuor = new SqlExecutor<Thing>();
+        User u = new User();
+        u.setId(1);
+        u.setName("Nick");
+        u.setPassword("123456");
+        
+        String sql = thingExectuor.select(Thing.class).from(u).getQuery();
+        assertEquals("select thing.* from thing join user on user.id = thing.userId;", sql);
+    }
+    
+    @Test
+    public void testAOneToManyRelationshipWithAWhereClause() throws DataConnectionException {
+        SqlExecutor<Thing> thingExectuor = new SqlExecutor<Thing>();
+        User u = new User();
+        u.setId(1);
+        u.setName("Nick");
+        u.setPassword("123456");
+        
+        String sql = thingExectuor.select(Thing.class).from(u).where("name").eq("blah").getQuery();
+        assertEquals("select thing.* from thing join user on user.id = thing.userId where thing.name = ?;", sql);
     }
 
     @Test
