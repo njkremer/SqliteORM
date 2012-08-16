@@ -18,11 +18,16 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.aopalliance.intercept.MethodInterceptor;
+import org.aopalliance.intercept.MethodInvocation;
+import org.springframework.aop.framework.ProxyFactory;
+
 import com.kremerk.Sqlite.JoinExecutor.JoinType;
 import com.kremerk.Sqlite.Annotations.AutoIncrement;
 import com.kremerk.Sqlite.Annotations.OneToMany;
 import com.kremerk.Sqlite.Annotations.PrimaryKey;
 import com.kremerk.Sqlite.utils.DateUtils;
+import com.kremerk.Sqlite.utils.SqliteUtils;
 
 /**
  * Used to continue a {@linkplain SqlStatement} to interact with the database.
@@ -60,7 +65,7 @@ public class SqlExecutor<T> {
     @SuppressWarnings("unchecked")
     public SqlExecutor<T> update(Object databaseObject) {
         reset();
-        clazz = (Class<T>) databaseObject.getClass();
+        clazz = (Class<T>) SqliteUtils.getClass(databaseObject);
         sqlObject = databaseObject;
         queryParts.put(StatementParts.UPDATE, String.format(UPDATE, clazz.getSimpleName().toLowerCase()));
         statementType = StatementType.UPDATE;
@@ -76,7 +81,7 @@ public class SqlExecutor<T> {
     @SuppressWarnings("unchecked")
     public SqlExecutor<T> insert(T databaseObject) throws DataConnectionException {
         reset();
-        clazz = (Class<T>) databaseObject.getClass();
+        clazz = (Class<T>) SqliteUtils.getClass(databaseObject);
         queryParts.put(StatementParts.INSERT, String.format(INSERT, clazz.getSimpleName().toLowerCase()));
         statementType = StatementType.INSERT;
         sqlObject = databaseObject;
@@ -115,7 +120,7 @@ public class SqlExecutor<T> {
     @SuppressWarnings("unchecked")
     public SqlExecutor<T> delete(T databaseObject) {
         reset();
-        clazz = (Class<T>) databaseObject.getClass();
+        clazz = (Class<T>) SqliteUtils.getClass(databaseObject);
         sqlObject = databaseObject;
         queryParts.put(StatementParts.DELETE, DELETE);
         queryParts.put(StatementParts.FROM, String.format(FROM, clazz.getSimpleName().toLowerCase()));
@@ -476,7 +481,7 @@ public class SqlExecutor<T> {
             for (int i = 0; i < columnCount; i++) {
                 processColumn(object, columns.get(i), resultSet);
             }
-            objects.add(object);
+            objects.add(createProxyObject(object));
         }
         resultSet.close();
         return objects;
@@ -633,6 +638,72 @@ public class SqlExecutor<T> {
             }
         }
     }
+    
+    private T createProxyObject(T object) throws DataConnectionException {       
+        final Map<String, String> relationships = findRelationships();
+        // TODO This check needs to be smarter, cuz right now it will error on all classes that don't have relationships.
+        // this should probably only be checked if they are trying to call the getter or something like that.
+//        if(relationships.size() == 0) {
+//            throw new DataConnectionException(String.format("No OneToMany relationship could be found on the %s", clazz));
+//        }
+        // TODO This might not make sense, see comment in findRelationships();
+//        if(relationships.size() > 0 && relationships.values().contains(null)) {
+//            throw new DataConnectionException(String.format("A OneToMany was found, however it wasn't a list of type %s", this.clazz.getName()));
+//        }
+        
+        if(relationships.size() > 0) {
+            String objectPk = this.getPkField(this.clazz);
+            if (objectPk == null) {
+                throw new DataConnectionException("Error when mapping relationships. PkField on the target object couldn't be found... it's probably not declared on the object. To use this method the target object must have a PrimaryKey defined.");
+            }
+            final Object pkValue = getPkValue(objectPk, object);
+            
+            ProxyFactory proxyFactory = new ProxyFactory(object);
+            proxyFactory.addAdvice(new MethodInterceptor() {
+                    public Object invoke(MethodInvocation mi) throws Throwable {
+                        String methodName = mi.getMethod().getName();
+                        if (relationships.keySet().contains(methodName)) {
+                            // TODO Check to see if the internal variable for the collection is null, load if not. If it is
+                            // just return that already loaded instance, don't do more DB calls than needed.
+                            ParameterizedType genericType = (ParameterizedType) mi.getMethod().getGenericReturnType();
+                            Type[] types = genericType.getActualTypeArguments();
+                            Class<?> returningClass = (Class<?>) types[0];
+                            return SqlStatement.select(returningClass).where(relationships.get(methodName)).eq(pkValue).getList();
+                        }
+                        return mi.getMethod().invoke(mi.getThis(), mi.getArguments());
+                    }
+            });
+            System.out.println(proxyFactory.getTargetClass());
+            return (T) proxyFactory.getProxy();
+        }
+        return object;
+    }
+    
+    private Map<String, String> findRelationships() throws DataConnectionException {
+        Map<String, String> relationshipMap = new HashMap<String, String>();
+        
+        Field[] fields = this.clazz.getDeclaredFields();
+        for(Field field : fields) {
+            Annotation annotation = field.getAnnotation(OneToMany.class);
+            if (annotation != null) {
+                Class<?> targetClazz = field.getType();
+                if(targetClazz != List.class) {
+                    throw new DataConnectionException(String.format("The return type of a OneToMany relationship must be a List Type for field %s", field.getName()));
+                }
+                //TODO See if this makes sense to check since we can guarantee the type they are trying to get back, we don't need to verify that it matches anything.
+//                ParameterizedType genericType = (ParameterizedType) field.getGenericType();
+//                Type[] types = genericType.getActualTypeArguments();
+//                if((Class<?>) types[0] == this.clazz) {
+                    relationshipMap.put("get" + capitalize(field.getName()), ((OneToMany) annotation).value());
+//                }
+//                else {
+//                    relationshipMap.put(field.getName(), null);
+//                }
+            }
+        }
+        
+        return relationshipMap;
+    }
 
     private String getPkField(Class<?> clazz) {
         String pkField = null;
@@ -645,12 +716,12 @@ public class SqlExecutor<T> {
         return pkField;
     }
 
-    private Object getPkValue(String pkField) throws DataConnectionException {
+    private Object getPkValue(String pkField, Object object) throws DataConnectionException {
         try {
-            return this.clazz.getMethod("get" + capitalize(pkField), (Class<?>[]) null).invoke(this.sqlObject, (Object[]) null);
+            return this.clazz.getMethod("get" + capitalize(pkField), (Class<?>[]) null).invoke(object, (Object[]) null);
         }
         catch (Exception e) {
-            throw new DataConnectionException("Could not get pkValue");
+            throw new DataConnectionException("Could not get pkValue", e);
         }
     }
     
@@ -688,7 +759,7 @@ public class SqlExecutor<T> {
             // Try to define the where based on if there is a pk field defined.
             if (!whereDefined && (statementType == StatementType.UPDATE || statementType == StatementType.DELETE)) {
                 String pkField = getPkField(this.clazz);
-                Object pkValue = getPkValue(pkField);
+                Object pkValue = getPkValue(pkField, this.sqlObject);
                 if (pkField == null) {
                     throw new DataConnectionException("pkField couldn't be found... it's probably not declared on the object.");
                 }

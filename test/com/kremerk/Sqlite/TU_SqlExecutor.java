@@ -11,7 +11,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import org.aopalliance.intercept.MethodInterceptor;
+import org.aopalliance.intercept.MethodInvocation;
 import org.junit.Test;
+import org.springframework.aop.framework.ProxyFactory;
+import org.springframework.aop.support.AopUtils;
 
 import com.kremerk.Sqlite.TestClass.AccessGroup;
 import com.kremerk.Sqlite.TestClass.BadOneToMany;
@@ -141,6 +145,28 @@ public class TU_SqlExecutor {
     }
     
     @Test
+    public void blah() {
+        User foo = new User();
+        ProxyFactory pf = new ProxyFactory(foo);
+        pf.addAdvice(new MethodInterceptor()
+        {
+                public Object invoke(MethodInvocation mi) throws Throwable
+                {
+                        if (mi.getMethod().getName().equals("getThings"))
+                        {
+                            System.out.println("blah");
+                            return null;
+                        }
+                        return mi.getMethod().invoke(mi.getThis(), mi.getArguments());
+                }
+        });
+        User proxy = (User) pf.getProxy();
+        proxy.setName("Nick");
+        assertEquals(null, proxy.getThings());
+        System.out.println(proxy.getName());
+    }
+    
+    @Test
     public void testSelectingFromAnObjectThatHasNoPK() {
         SqlExecutor<AccessGroup> accessGroup = new SqlExecutor<AccessGroup>();
         BadUser uag = new BadUser();
@@ -214,7 +240,32 @@ public class TU_SqlExecutor {
         deleteUser(users.get(0));
         deleteUser(users.get(1));
     }
+    
+    @Test
+    public void testGettingOneToManyInDb() throws DataConnectionException {
+        createUser("Nick");
+        createThing("Thing1");
+        createThing("Thing2");
+        createThing("Thing3");
+        
+        User nick = e.select(User.class).getFirst();
+        List<Thing> nicksThings = nick.getThings();
+        assertEquals(3, nicksThings.size());
+        assertEquals("Thing1", nicksThings.get(0).getName());
+        assertEquals("Thing2", nicksThings.get(1).getName());
+        assertEquals("Thing3", nicksThings.get(2).getName());
+        
+        deleteUser(nick);
+        deleteThing("Thing1");
+        deleteThing("Thing2");
+        deleteThing("Thing3");
+    }
 
+    @Test
+    public void testToMakeSureNonRelationshipObjectArentProxies() {
+        fail("Implement this");
+    }
+    
     @Test
     public void testUpdatingInDb() throws DataConnectionException {
         createUser("Nick");
@@ -457,10 +508,22 @@ public class TU_SqlExecutor {
     public void deleteUserGroupLinks(long userId) throws DataConnectionException {
         uagExecutor.delete(UserAccessGroup.class).where("userId").eq(userId).execute();
     }
+    
+    public void createThing(String thingName) throws DataConnectionException {
+        Thing thing = new Thing();
+        thing.setName(thingName);
+        thing.setUserId(1);
+        thingExecutor.insert(thing).execute();
+    }
+    
+    public void deleteThing(String thingName) throws DataConnectionException {
+        thingExecutor.delete(Thing.class).where("name").eq(thingName).execute();
+    }
 
     private SqlExecutor<User> e = new SqlExecutor<User>();
     private SqlExecutor<AccessGroup> groupExecutor = new SqlExecutor<AccessGroup>();
     private SqlExecutor<UserAccessGroup> uagExecutor = new SqlExecutor<UserAccessGroup>();
+    private SqlExecutor<Thing> thingExecutor = new SqlExecutor<Thing>();
     private SqlExecutor<com.kremerk.Sqlite.TestClass.TestObject> te = new SqlExecutor<com.kremerk.Sqlite.TestClass.TestObject>();
 
 }
