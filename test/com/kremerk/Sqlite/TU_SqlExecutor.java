@@ -2,6 +2,7 @@ package com.kremerk.Sqlite;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 
 import java.util.Calendar;
 import java.util.List;
@@ -13,10 +14,12 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 
 import com.kremerk.Sqlite.TestClass.AccessGroup;
+import com.kremerk.Sqlite.TestClass.BadOneToMany;
+import com.kremerk.Sqlite.TestClass.BadUser;
 import com.kremerk.Sqlite.TestClass.TestObject;
+import com.kremerk.Sqlite.TestClass.Thing;
 import com.kremerk.Sqlite.TestClass.User;
 import com.kremerk.Sqlite.TestClass.UserAccessGroup;
-import com.kremerk.Sqlite.TestClass.Thing;
 
 public class TU_SqlExecutor {
 
@@ -121,6 +124,59 @@ public class TU_SqlExecutor {
         
         String sql = thingExectuor.select(Thing.class).from(u).where("name").eq("blah").getQuery();
         assertEquals("select thing.* from thing join user on user.id = thing.userId where thing.name = ?;", sql);
+    }
+    
+    @Test
+    public void testAOneToManyRelationshipWithWrongContainerType() {
+        SqlExecutor<Thing> thingExectuor = new SqlExecutor<Thing>();
+        BadOneToMany obj = new BadOneToMany();
+        
+        try {
+            thingExectuor.select(Thing.class).from(obj).getQuery();
+            fail("An exception should have been thrown");
+        }
+        catch(DataConnectionException e) {
+            assertEquals("The return type of a OneToMany relationship must be a List Type for field things", e.getMessage());
+        }
+    }
+    
+    @Test
+    public void testSelectingFromAnObjectThatHasNoPK() {
+        SqlExecutor<AccessGroup> accessGroup = new SqlExecutor<AccessGroup>();
+        BadUser uag = new BadUser();
+        try {
+            accessGroup.select(AccessGroup.class).from(uag).getQuery();
+            fail("An exception should have been thrown.");
+        }
+        catch(DataConnectionException e) {
+            assertEquals("pkField on the target object couldn't be found... it's probably not declared on the object. To use this method the target object must have a PrimaryKey defined.", e.getMessage());
+        }
+    }
+    
+    @Test
+    public void testSelectingTheWrongTypeFromAClassThatHasAOneToManyRelationship() {
+        SqlExecutor<AccessGroup> accessGroup = new SqlExecutor<AccessGroup>();
+        User user = new User();
+        try {
+            accessGroup.select(AccessGroup.class).from(user).getQuery();
+            fail("An exception should have been thrown.");
+        }
+        catch(DataConnectionException e) {
+            assertEquals("A OneToMany was found, however it wasn't a list of type com.kremerk.Sqlite.TestClass.AccessGroup", e.getMessage());
+        }
+    }
+    
+    @Test
+    public void testSelectingFromAnObjectThatHasNoOneToManyRelationship() {
+        SqlExecutor<AccessGroup> accessGroup = new SqlExecutor<AccessGroup>();
+        Thing thing  = new Thing();
+        try {
+            accessGroup.select(AccessGroup.class).from(thing).getQuery();
+            fail("An exception should have been thrown.");
+        }
+        catch(DataConnectionException e) {
+            assertEquals("No OneToMany reationship could be found on the class com.kremerk.Sqlite.TestClass.Thing", e.getMessage());
+        }
     }
 
     @Test

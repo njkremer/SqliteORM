@@ -220,7 +220,7 @@ public class SqlExecutor<T> {
             throw new DataConnectionException("pkField on the target object couldn't be found... it's probably not declared on the object. To use this method the target object must have a PrimaryKey defined.");
         }
         if(thisFk == null) {
-            throw new DataConnectionException(String.format("Either a OneToMany relationship could not be found on the %s or the declared OneToMany field's return type is not a list of type %s", object.getClass(), this.clazz));
+            throw new DataConnectionException(String.format("A OneToMany was found, however it wasn't a list of type %s", this.clazz.getName()));
         }
 
         return join(object.getClass(), objectPk, this.clazz, thisFk);
@@ -657,19 +657,24 @@ public class SqlExecutor<T> {
     private String getFkField(Class<?> clazz) throws DataConnectionException {
         String fkField = null;
         Field[] fields = clazz.getDeclaredFields();
+        boolean annotationFound = false;
         for(Field field : fields) {
-            Annotation annotaion = field.getAnnotation(OneToMany.class);
-            if (annotaion != null) {
+            Annotation annotation = field.getAnnotation(OneToMany.class);
+            if (annotation != null) {
+                annotationFound = true;
                 Class<?> targetClazz = field.getType();
                 if(targetClazz != List.class) {
-                    throw new DataConnectionException("The return type of a OneToMany relationship must be a List Type");
+                    throw new DataConnectionException(String.format("The return type of a OneToMany relationship must be a List Type for field %s", field.getName()));
                 }
                 ParameterizedType genericType = (ParameterizedType) field.getGenericType();
                 Type[] types = genericType.getActualTypeArguments();
                 if((Class<?>) types[0] == this.clazz) {
-                    fkField = ((OneToMany) annotaion).value();
+                    fkField = ((OneToMany) annotation).value();
                 }
             }
+        }
+        if(!annotationFound) {
+            throw new DataConnectionException(String.format("No OneToMany reationship could be found on the %s", clazz));
         }
         return fkField;
     }
