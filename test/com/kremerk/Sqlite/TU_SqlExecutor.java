@@ -2,6 +2,7 @@ package com.kremerk.Sqlite;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.Calendar;
@@ -11,11 +12,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import org.aopalliance.intercept.MethodInterceptor;
-import org.aopalliance.intercept.MethodInvocation;
 import org.junit.Test;
-import org.springframework.aop.framework.ProxyFactory;
-import org.springframework.aop.support.AopUtils;
 
 import com.kremerk.Sqlite.TestClass.AccessGroup;
 import com.kremerk.Sqlite.TestClass.BadOneToMany;
@@ -144,27 +141,6 @@ public class TU_SqlExecutor {
         }
     }
     
-    @Test
-    public void blah() {
-        User foo = new User();
-        ProxyFactory pf = new ProxyFactory(foo);
-        pf.addAdvice(new MethodInterceptor()
-        {
-                public Object invoke(MethodInvocation mi) throws Throwable
-                {
-                        if (mi.getMethod().getName().equals("getThings"))
-                        {
-                            System.out.println("blah");
-                            return null;
-                        }
-                        return mi.getMethod().invoke(mi.getThis(), mi.getArguments());
-                }
-        });
-        User proxy = (User) pf.getProxy();
-        proxy.setName("Nick");
-        assertEquals(null, proxy.getThings());
-        System.out.println(proxy.getName());
-    }
     
     @Test
     public void testSelectingFromAnObjectThatHasNoPK() {
@@ -242,7 +218,7 @@ public class TU_SqlExecutor {
     }
     
     @Test
-    public void testGettingOneToManyInDb() throws DataConnectionException {
+    public void testGettingARelationshipObjectDireclty() throws DataConnectionException {
         createUser("Nick");
         createThing("Thing1");
         createThing("Thing2");
@@ -262,8 +238,19 @@ public class TU_SqlExecutor {
     }
 
     @Test
-    public void testToMakeSureNonRelationshipObjectArentProxies() {
-        fail("Implement this");
+    public void testToMakeSureNonRelationshipObjectArentProxies() throws DataConnectionException {
+        createUser("Nick");
+        createThing("Thing1");
+        
+        User nick = e.select(User.class).getFirst();
+        Thing nicksThing = nick.getThings().get(0);
+        
+        assertTrue( "The User object has a relationship and should therefore have faulting, which means it shuld not be of time User.class.", nick.getClass() != User.class);
+        assertEquals("Thing doesn't have a relationship and should be the an instance of Thing.class", nicksThing.getClass() , Thing.class);
+        
+        deleteUser(nick);
+        deleteThing("Thing1");
+
     }
     
     @Test

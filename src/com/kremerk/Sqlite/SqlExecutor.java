@@ -639,17 +639,9 @@ public class SqlExecutor<T> {
         }
     }
     
+    @SuppressWarnings("unchecked")
     private T createProxyObject(T object) throws DataConnectionException {       
         final Map<String, String> relationships = findRelationships();
-        // TODO This check needs to be smarter, cuz right now it will error on all classes that don't have relationships.
-        // this should probably only be checked if they are trying to call the getter or something like that.
-//        if(relationships.size() == 0) {
-//            throw new DataConnectionException(String.format("No OneToMany relationship could be found on the %s", clazz));
-//        }
-        // TODO This might not make sense, see comment in findRelationships();
-//        if(relationships.size() > 0 && relationships.values().contains(null)) {
-//            throw new DataConnectionException(String.format("A OneToMany was found, however it wasn't a list of type %s", this.clazz.getName()));
-//        }
         
         if(relationships.size() > 0) {
             String objectPk = this.getPkField(this.clazz);
@@ -660,20 +652,22 @@ public class SqlExecutor<T> {
             
             ProxyFactory proxyFactory = new ProxyFactory(object);
             proxyFactory.addAdvice(new MethodInterceptor() {
-                    public Object invoke(MethodInvocation mi) throws Throwable {
-                        String methodName = mi.getMethod().getName();
+                    public Object invoke(MethodInvocation methodInvocation) throws Throwable {
+                        String methodName = methodInvocation.getMethod().getName();
                         if (relationships.keySet().contains(methodName)) {
                             // TODO Check to see if the internal variable for the collection is null, load if not. If it is
                             // just return that already loaded instance, don't do more DB calls than needed.
-                            ParameterizedType genericType = (ParameterizedType) mi.getMethod().getGenericReturnType();
+                            ParameterizedType genericType = (ParameterizedType) methodInvocation.getMethod().getGenericReturnType();
                             Type[] types = genericType.getActualTypeArguments();
                             Class<?> returningClass = (Class<?>) types[0];
                             return SqlStatement.select(returningClass).where(relationships.get(methodName)).eq(pkValue).getList();
                         }
-                        return mi.getMethod().invoke(mi.getThis(), mi.getArguments());
+                        else if(methodInvocation.getMethod().getReturnType() == List.class) {
+                            throw new DataConnectionException(String.format("No OneToMany relationship could be found on a member variable that corresponds to the method %s", methodInvocation.getMethod().getName()));
+                        }
+                        return methodInvocation.getMethod().invoke(methodInvocation.getThis(), methodInvocation.getArguments());
                     }
             });
-            System.out.println(proxyFactory.getTargetClass());
             return (T) proxyFactory.getProxy();
         }
         return object;
@@ -690,15 +684,7 @@ public class SqlExecutor<T> {
                 if(targetClazz != List.class) {
                     throw new DataConnectionException(String.format("The return type of a OneToMany relationship must be a List Type for field %s", field.getName()));
                 }
-                //TODO See if this makes sense to check since we can guarantee the type they are trying to get back, we don't need to verify that it matches anything.
-//                ParameterizedType genericType = (ParameterizedType) field.getGenericType();
-//                Type[] types = genericType.getActualTypeArguments();
-//                if((Class<?>) types[0] == this.clazz) {
-                    relationshipMap.put("get" + capitalize(field.getName()), ((OneToMany) annotation).value());
-//                }
-//                else {
-//                    relationshipMap.put(field.getName(), null);
-//                }
+                relationshipMap.put("get" + capitalize(field.getName()), ((OneToMany) annotation).value());
             }
         }
         
