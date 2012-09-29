@@ -538,7 +538,7 @@ public class SqlExecutor<T> {
         boolean first = true;
         queryParts.put(StatementParts.SET, "");
         for (Field classField : clazz.getDeclaredFields()) {
-            String methodName = (classField.getType() == Boolean.class ? "is" : "get") + capitalize(classField.getName());
+            String methodName = (classField.getType() == Boolean.class ? "is" : "get") + SqliteUtils.capitalize(classField.getName());
             String fieldName = classField.getName();
 
             boolean fieldShouldBeInUpdateStatement = !classField.isAnnotationPresent(AutoIncrement.class) && !classField.isAnnotationPresent(OneToMany.class);
@@ -572,7 +572,7 @@ public class SqlExecutor<T> {
 
         boolean first = true;
         for (Field field : clazz.getDeclaredFields()) {
-            String methodName = field.getType() == Boolean.class ? "is" + capitalize(field.getName()) : "get" + capitalize(field.getName());
+            String methodName = field.getType() == Boolean.class ? "is" + SqliteUtils.capitalize(field.getName()) : "get" + SqliteUtils.capitalize(field.getName());
             String fieldName = field.getName();
             // We don't want to include the auto increment in the create statement.
             boolean fieldShouldBeInCreateStatement = !field.isAnnotationPresent(AutoIncrement.class) && !field.isAnnotationPresent(OneToMany.class);
@@ -641,7 +641,7 @@ public class SqlExecutor<T> {
     
     @SuppressWarnings("unchecked")
     private T createProxyObject(T object) throws DataConnectionException {       
-        final Map<String, String> relationships = findRelationships();
+        relationships = findRelationships();
         
         if(relationships.size() > 0) {
             String objectPk = this.getPkField(this.clazz);
@@ -653,14 +653,12 @@ public class SqlExecutor<T> {
             ProxyFactory proxyFactory = new ProxyFactory(object);
             proxyFactory.addAdvice(new MethodInterceptor() {
                     public Object invoke(MethodInvocation methodInvocation) throws Throwable {
-                        String methodName = methodInvocation.getMethod().getName();
-                        if (relationships.keySet().contains(methodName)) {
+                        String fieldName = SqliteUtils.lowercase(methodInvocation.getMethod().getName().replaceFirst("get", ""));
+                        if (relationships.keySet().contains(fieldName)) {
                             // TODO Check to see if the internal variable for the collection is null, load if not. If it is
                             // just return that already loaded instance, don't do more DB calls than needed.
-                            ParameterizedType genericType = (ParameterizedType) methodInvocation.getMethod().getGenericReturnType();
-                            Type[] types = genericType.getActualTypeArguments();
-                            Class<?> returningClass = (Class<?>) types[0];
-                            return SqlStatement.select(returningClass).where(relationships.get(methodName)).eq(pkValue).getList();
+                            Relationship relationship = relationships.get(fieldName);
+                            return SqlStatement.select(relationship.getRelatedClassType()).where(relationship.getFk()).eq(pkValue).getList();
                         }
                         else if(methodInvocation.getMethod().getReturnType() == List.class) {
                             throw new DataConnectionException(String.format("No OneToMany relationship could be found on a member variable that corresponds to the method %s", methodInvocation.getMethod().getName()));
@@ -673,18 +671,18 @@ public class SqlExecutor<T> {
         return object;
     }
     
-    private Map<String, String> findRelationships() throws DataConnectionException {
-        Map<String, String> relationshipMap = new HashMap<String, String>();
+    private Map<String, Relationship> findRelationships() throws DataConnectionException {
+        Map<String, Relationship> relationshipMap = new HashMap<String, Relationship>();
         
         Field[] fields = this.clazz.getDeclaredFields();
         for(Field field : fields) {
-            Annotation annotation = field.getAnnotation(OneToMany.class);
-            if (annotation != null) {
+            boolean  hasAnnotation = field.isAnnotationPresent(OneToMany.class);
+            if (hasAnnotation) {
                 Class<?> targetClazz = field.getType();
                 if(targetClazz != List.class) {
                     throw new DataConnectionException(String.format("The return type of a OneToMany relationship must be a List Type for field %s", field.getName()));
                 }
-                relationshipMap.put("get" + capitalize(field.getName()), ((OneToMany) annotation).value());
+                relationshipMap.put(field.getName(), new Relationship(field));
             }
         }
         
@@ -704,7 +702,7 @@ public class SqlExecutor<T> {
 
     private Object getPkValue(String pkField, Object object) throws DataConnectionException {
         try {
-            return this.clazz.getMethod("get" + capitalize(pkField), (Class<?>[]) null).invoke(object, (Object[]) null);
+            return this.clazz.getMethod("get" + SqliteUtils.capitalize(pkField), (Class<?>[]) null).invoke(object, (Object[]) null);
         }
         catch (Exception e) {
             throw new DataConnectionException("Could not get pkValue", e);
@@ -743,7 +741,8 @@ public class SqlExecutor<T> {
                 throw new DataConnectionException("Connection is not initialized");
             }
             // Try to define the where based on if there is a pk field defined.
-            if (!whereDefined && (statementType == StatementType.UPDATE || statementType == StatementType.DELETE)) {
+            boolean needsAutoDefinedWhereStatement = !whereDefined && (statementType == StatementType.UPDATE || statementType == StatementType.DELETE);
+            if (needsAutoDefinedWhereStatement) {
                 String pkField = getPkField(this.clazz);
                 Object pkValue = getPkValue(pkField, this.sqlObject);
                 if (pkField == null) {
@@ -762,6 +761,20 @@ public class SqlExecutor<T> {
             }
             else {
                 statement.execute();
+                
+                if(relationships == null) {
+                    relationships = findRelationships();
+                }
+                boolean relationshipsNeedToBeAdded = relationships.size() > 0 && (statementType == StatementType.INSERT || statementType == StatementType.UPDATE);
+                if(relationshipsNeedToBeAdded) {
+                    for(String methodName : relationships.keySet()) {
+                        
+                        // TODO go through the relationships and set the foreign keys to this objects pk.
+//                        Method method = clazz.getDeclaredMethod(methodName, null);
+//                        method.invoke(this, (Object []) null);
+//                        for()
+                    }
+                }
             }
         }
         catch(SQLException e) {
@@ -800,13 +813,9 @@ public class SqlExecutor<T> {
         else if (type == Long.class || type == Long.TYPE) {
             value = resultSet.getLong(columnName);
         }
-        String methodName = "set" + capitalize(columnName);
+        String methodName = "set" + SqliteUtils.capitalize(columnName);
         Method method = clazz.getDeclaredMethod(methodName, type);
         method.invoke(object, value);
-    }
-
-    private String capitalize(String word) {
-        return word.substring(0, 1).toUpperCase() + word.substring(1);
     }
 
     private void reset() {
@@ -831,6 +840,7 @@ public class SqlExecutor<T> {
     private boolean firstJoin = true;
     private WhereExecutor<T> whereExecutor = new WhereExecutor<T>(this);
     private JoinExecutor joinExecutor = new JoinExecutor();
+    private Map<String, Relationship> relationships;
 
     private static final String SELECT = "select %s.* ";
     private static final String FROM = "from %s ";
