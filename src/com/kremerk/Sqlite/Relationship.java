@@ -13,7 +13,7 @@ public class Relationship {
         ONE_TO_MANY
     }
     
-    public Relationship(Field field) {
+    public Relationship(Field field) throws DataConnectionException {
         if(field.isAnnotationPresent(OneToMany.class)) {
             type = RelationshipType.ONE_TO_MANY;
             fk = ((OneToMany) field.getAnnotation(OneToMany.class)).value();
@@ -21,6 +21,13 @@ public class Relationship {
             ParameterizedType genericType = (ParameterizedType) field.getGenericType();
             Type[] types = genericType.getActualTypeArguments();
             relatedClassType = (Class<?>) types[0];
+            
+            try {
+                fkClassType = relatedClassType.getDeclaredField(fk).getType();
+            }
+            catch (Exception e) {
+                throw new DataConnectionException(String.format("Error occured when trying to get foreign key's type. The foreign key of %s does not exist on %s", fk, relatedClassType));
+            }
         }
     }
     
@@ -30,6 +37,14 @@ public class Relationship {
     
     public String setterName() {
         return "set" + SqliteUtils.capitalize(fieldName);
+    }
+    
+    public String foreignGetterName() {
+        return "get" + SqliteUtils.capitalize(fk);
+    }
+    
+    public String foreignSetterName() {
+        return "set" + SqliteUtils.capitalize(fk);
     }
     
     public String getFk() {
@@ -64,11 +79,20 @@ public class Relationship {
         this.type = type;
     }
 
+    public Class<?> getFkClassType() {
+        return fkClassType;
+    }
+
+    public void setFkClassType(Class<?> fkClassType) {
+        this.fkClassType = fkClassType;
+    }
+
 
 
     private String fk;
     private String fieldName;
     private Class<?> relatedClassType;
+    private Class<?> fkClassType;
     private RelationshipType type;
     
 }

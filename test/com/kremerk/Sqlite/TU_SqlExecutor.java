@@ -254,6 +254,23 @@ public class TU_SqlExecutor {
     }
     
     @Test
+    public void testSettingRelationshipThroughUpdate() throws DataConnectionException {
+        createUser("Nick");
+        
+        User nick = e.select(User.class).getFirst();
+        
+        Thing thing = new Thing();
+        thing.setName("Thing1");
+        thingExecutor.insert(thing);
+        
+        List<Thing> things = nick.getThings();
+        nick.getThings().add(thing);
+        e.update(nick);
+        
+        deleteUser(nick);
+    }
+    
+    @Test
     public void testUpdatingInDb() throws DataConnectionException {
         createUser("Nick");
 

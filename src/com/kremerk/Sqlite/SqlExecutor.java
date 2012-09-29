@@ -762,19 +762,31 @@ public class SqlExecutor<T> {
             else {
                 statement.execute();
                 
-                if(relationships == null) {
-                    relationships = findRelationships();
-                }
-                boolean relationshipsNeedToBeAdded = relationships.size() > 0 && (statementType == StatementType.INSERT || statementType == StatementType.UPDATE);
-                if(relationshipsNeedToBeAdded) {
-                    for(String methodName : relationships.keySet()) {
-                        
-                        // TODO go through the relationships and set the foreign keys to this objects pk.
-//                        Method method = clazz.getDeclaredMethod(methodName, null);
-//                        method.invoke(this, (Object []) null);
-//                        for()
-                    }
-                }
+                /* TODO This needs to be looked at... before gonig down the road of inserting the related objects, we might want
+                 to check if the list actually has any objects.
+                 The other problem is right at creation time the pk of the object might not be there... so we may want to write a join
+                 to do this update of the related objects...
+                 */ 
+//                if(relationships == null) {
+//                    relationships = findRelationships();
+//                }
+//                boolean relationshipsNeedToBeAdded = relationships.size() > 0 && (statementType == StatementType.INSERT || statementType == StatementType.UPDATE);
+//                if(relationshipsNeedToBeAdded) {
+//                    Object thisObjectsPrimaryKey = this.getPkValue(this.getPkField(this.clazz), this.sqlObject);
+//                    for(Relationship relationship : relationships.values()) {
+//                        
+//                        // Get the list of related objects.
+//                        Method method = clazz.getDeclaredMethod(relationship.getterName(), (Class<?>[]) null);
+//                        List<?> relatedObjects = (List<?>) method.invoke(this, (Object []) null);
+//                        
+//                        // Call the foreign key setter on each of the objects, with the current object's primary key.
+//                        for(Object object : relatedObjects) {
+//                            Method objectsSetterMethod = object.getClass().getDeclaredMethod(relationship.foreignSetterName(), relationship.getFkClassType());
+//                            objectsSetterMethod.invoke(object, thisObjectsPrimaryKey);
+//                            SqlStatement.update(object);
+//                        }
+//                    }
+//                }
             }
         }
         catch(SQLException e) {
