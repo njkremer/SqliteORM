@@ -10,6 +10,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Date;
@@ -46,8 +47,9 @@ public class SqlExecutor<T> {
      * 
      * @param clazz A reference to the Object.class that you are retrieving from the database.
      * @return A {@linkplain SqlExecutor} used for function chaining.
+     * @throws DataConnectionException 
      */
-    public SqlExecutor<T> select(Class<T> clazz) {
+    public SqlExecutor<T> select(Class<T> clazz) throws DataConnectionException {
         reset();
         this.clazz = clazz;
         queryParts.put(StatementParts.SELECT, String.format(SELECT, clazz.getSimpleName().toLowerCase()));
@@ -61,9 +63,10 @@ public class SqlExecutor<T> {
      * 
      * @param databaseObject An object that was queried from the database that has been updated.
      * @return A {@linkplain SqlExecutor} used for function chaining.
+     * @throws DataConnectionException 
      */
     @SuppressWarnings("unchecked")
-    public SqlExecutor<T> update(Object databaseObject) {
+    public SqlExecutor<T> update(Object databaseObject) throws DataConnectionException {
         reset();
         clazz = (Class<T>) SqliteUtils.getClass(databaseObject);
         sqlObject = databaseObject;
@@ -118,7 +121,7 @@ public class SqlExecutor<T> {
      * @throws DataConnectionException
      */
     @SuppressWarnings("unchecked")
-    public SqlExecutor<T> delete(T databaseObject) {
+    public SqlExecutor<T> delete(T databaseObject) throws DataConnectionException {
         reset();
         clazz = (Class<T>) SqliteUtils.getClass(databaseObject);
         sqlObject = databaseObject;
@@ -702,7 +705,7 @@ public class SqlExecutor<T> {
 
     private Object getPkValue(String pkField, Object object) throws DataConnectionException {
         try {
-            return this.clazz.getMethod("get" + SqliteUtils.capitalize(pkField), (Class<?>[]) null).invoke(object, (Object[]) null);
+            return object.getClass().getMethod("get" + SqliteUtils.capitalize(pkField), (Class<?>[]) null).invoke(object, (Object[]) null);
         }
         catch (Exception e) {
             throw new DataConnectionException("Could not get pkValue", e);
@@ -754,7 +757,7 @@ public class SqlExecutor<T> {
                 where(pkField);
                 whereExecutor.eq(pkValue);
             }
-            statement = connection.prepareStatement(getQuery());
+            statement = connection.prepareStatement(getQuery(), Statement.RETURN_GENERATED_KEYS);
             replaceValues();
             if (statementType == StatementType.SELECT) {
                 resultSet = statement.executeQuery();
@@ -762,16 +765,23 @@ public class SqlExecutor<T> {
             else {
                 statement.execute();
                 
-                /* TODO This needs to be looked at... before gonig down the road of inserting the related objects, we might want
+                
+                /* TODO This needs to be looked at... before going down the road of inserting the related objects, we might want
                  to check if the list actually has any objects.
                  The other problem is right at creation time the pk of the object might not be there... so we may want to write a join
                  to do this update of the related objects...
                  */ 
-//                if(relationships == null) {
-//                    relationships = findRelationships();
-//                }
-//                boolean relationshipsNeedToBeAdded = relationships.size() > 0 && (statementType == StatementType.INSERT || statementType == StatementType.UPDATE);
-//                if(relationshipsNeedToBeAdded) {
+                if(relationships == null) {
+                    relationships = findRelationships();
+                }
+                boolean relationshipsNeedToBeAdded = relationships.size() > 0 && (statementType == StatementType.INSERT || statementType == StatementType.UPDATE);
+                if(relationshipsNeedToBeAdded) {
+                    if(statementType == StatementType.INSERT) {
+                        for(Relationship relationship : relationships.values()) {
+                            addRelationshipForInsert(relationship);
+                        }
+                    }
+                }
 //                    Object thisObjectsPrimaryKey = this.getPkValue(this.getPkField(this.clazz), this.sqlObject);
 //                    for(Relationship relationship : relationships.values()) {
 //                        
@@ -829,8 +839,59 @@ public class SqlExecutor<T> {
         Method method = clazz.getDeclaredMethod(methodName, type);
         method.invoke(object, value);
     }
+    
+    private void addRelationshipForInsert(Relationship relationship) throws DataConnectionException {
+        try {
+            Method method = clazz.getDeclaredMethod(relationship.getterName(), (Class<?>[]) null);
+            List<?> relatedObjects = (List<?>) method.invoke(this.sqlObject, (Object []) null);
+            if(relatedObjects != null) {
+                for(Object object : relatedObjects) {
+                    setupRelationshipForRelatedObject(relationship, object, relationship.getFk());
+                }
+            }
+        }
+        catch(Exception e) {
+            throw new DataConnectionException("Error adding relationship on object insertion", e);
+        }
+    }
+    
+    public void setupRelationshipForRelatedObject(Relationship relationship, Object object, String foreignKey) throws DataConnectionException {
+        String primaryKey = getPkField(object.getClass());
+        Object objectsPrimaryKey = getPkValue(primaryKey, object);
+        Object thisObjectsPrimaryKey = this.getPkValue(this.getPkField(this.clazz), this.sqlObject);
+        boolean thisSqlObjectIsNotUpToDate = SqliteUtils.isEmpty(thisObjectsPrimaryKey);
+        
+        try {
+            if(thisSqlObjectIsNotUpToDate) {
+                ResultSet rs = statement.getGeneratedKeys();
+                rs.next();
+                thisObjectsPrimaryKey = rs.getLong(1);
+            }
+            Method objectsSetterMethod = object.getClass().getDeclaredMethod(relationship.foreignSetterName(), relationship.getFkClassType());
+            objectsSetterMethod.invoke(object, thisObjectsPrimaryKey);
+        }
+        catch(Exception e) {
+            throw new DataConnectionException(String.format("Could not set the foreign key %s on the %s object",foreignKey, object.getClass()), e);
+        }
+        
+        boolean objectIsInDbAlready = SqlStatement.select(object.getClass()).where(primaryKey).eq(objectsPrimaryKey).getCount() > 0;
+        if(objectIsInDbAlready) {
+            SqlStatement.update(object).execute();
+        }
+        else {
+            SqlStatement.insert(object).execute();
+        }
+    }
 
-    private void reset() {
+    private void reset() throws DataConnectionException {
+        try {
+            if(statement != null) {
+                statement.close();
+            }
+        }
+        catch (Exception e) {
+            throw new DataConnectionException("Failed to close sql statement", e);
+        }
         queryParts = new LinkedHashMap<StatementParts, String>();
         statement = null;
         resultSet = null;

@@ -18,8 +18,9 @@ public class SqlStatement {
      * 
      * @param clazz A reference to the Object.class that you are retrieving from the database.
      * @return new {@linkplain SqlExecutor} used to retrieve an object from the database.
+     * @throws DataConnectionException 
      */
-    public static <T> SqlExecutor<T> select(Class<T> clazz) {
+    public static <T> SqlExecutor<T> select(Class<T> clazz) throws DataConnectionException {
         return new SqlExecutor<T>().select(clazz);
     }
 
@@ -33,7 +34,7 @@ public class SqlStatement {
      * @return new {@linkplain SqlExecutor} used to update an object in the database.
      * @throws DataConnectionException
      */
-    public static <T> SqlExecutor<T> update(T databaseObject) {
+    public static <T> SqlExecutor<T> update(T databaseObject) throws DataConnectionException {
         return new SqlExecutor<T>().update(databaseObject);
     }
 
@@ -73,7 +74,7 @@ public class SqlStatement {
      * @return new {@linkplain SqlExecutor} used to delete an object in the database.
      * @throws DataConnectionException
      */
-    public static <T> SqlExecutor<T> delete(T databaseObject) {
+    public static <T> SqlExecutor<T> delete(T databaseObject) throws DataConnectionException {
         return new SqlExecutor<T>().delete(databaseObject);
     }
     

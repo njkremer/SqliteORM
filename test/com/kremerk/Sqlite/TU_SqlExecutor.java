@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
@@ -254,20 +255,42 @@ public class TU_SqlExecutor {
     }
     
     @Test
-    public void testSettingRelationshipThroughUpdate() throws DataConnectionException {
-        createUser("Nick");
+    public void testCreatingAnObjectWithARelationshipThatDoesntExistInTheDatabase() throws DataConnectionException {
+        DataConnectionManager.init("test/test.db");
+        User u = new User();
+        u.setName("nick");
+        u.setPassword("123456");
+        
+        Thing t = new Thing();
+        t.setName("Thing1");
+        
+        u.setThings(Arrays.asList(t));
+        
+        e.insert(u).execute();
         
         User nick = e.select(User.class).getFirst();
-        
-        Thing thing = new Thing();
-        thing.setName("Thing1");
-        thingExecutor.insert(thing);
-        
-        List<Thing> things = nick.getThings();
-        nick.getThings().add(thing);
-        e.update(nick);
+        List<Thing> nicksThings = nick.getThings();
+        assertEquals(1, nicksThings.size());
+        assertEquals("Thing1", nicksThings.get(0).getName());
         
         deleteUser(nick);
+        deleteThing("Thing1");
+        
+    }
+    
+    @Test
+    public void testCreatingAnObjectWithARelationshipThatAlreadyExistsInTheDatabase() {
+        fail("Not implemented yet");
+    }
+    
+    @Test
+    public void testUpdatingAnObjectWithARelationshipThatAlreadyExistsInTheDatabase() throws DataConnectionException {
+        fail("Not implemented yet");
+    }
+    
+    @Test
+    public void testUpdatingAnObjectWithARaltionshipThatDoesntAlreadyExistInTheDatabase() {
+        fail("Not implemented yet");
     }
     
     @Test
@@ -460,7 +483,7 @@ public class TU_SqlExecutor {
     }
     
     public class ThreadTest implements Runnable {
-        public ThreadTest(int i) {
+        public ThreadTest(int i) throws DataConnectionException {
             this.i = i;
             this.e = new SqlExecutor<User>().select(User.class);
         }
