@@ -279,19 +279,57 @@ public class TU_SqlExecutor {
     }
     
     @Test
-    public void testCreatingAnObjectWithARelationshipThatAlreadyExistsInTheDatabase() {
-        fail("Not implemented yet");
+    public void testCreatingAnObjectWithARelationshipThatAlreadyExistsInTheDatabase() throws DataConnectionException {
+        DataConnectionManager.init("test/test.db");
+        Thing t = new Thing();
+        t.setName("Thing1");
+        thingExecutor.insert(t).execute();
+        
+        Thing thing = thingExecutor.select(Thing.class).where("name").eq("Thing1").getFirst();
+        
+        User u = new User();
+        u.setName("nick");
+        u.setPassword("123456");
+        u.setThings(Arrays.asList(thing));
+        
+        e.insert(u).execute();
+        
+        User nick = e.select(User.class).getFirst();
+        List<Thing> nicksThings = nick.getThings();
+        assertEquals(1, nicksThings.size());
+        assertEquals("Thing1", nicksThings.get(0).getName());
+        
+        deleteUser(nick);
+        deleteThing("Thing1");
     }
+    
+    @Test
+    public void testUpdatingAnObjectWithARaltionshipThatDoesntAlreadyExistInTheDatabase() throws DataConnectionException {
+        createUser("Nick");
+        
+        Thing t = new Thing();
+        t.setName("Thing1");
+        
+        User u = e.select(User.class).where("name").eq("Nick").getFirst();
+        u.setThings(Arrays.asList(t));
+        
+        e.update(u).execute();
+        
+        User nick = e.select(User.class).getFirst();
+        List<Thing> nicksThings = nick.getThings();
+        assertEquals(1, nicksThings.size());
+        assertEquals("Thing1", nicksThings.get(0).getName());
+        
+        deleteUser(nick);
+        deleteThing("Thing1");
+        
+    }   
     
     @Test
     public void testUpdatingAnObjectWithARelationshipThatAlreadyExistsInTheDatabase() throws DataConnectionException {
         fail("Not implemented yet");
     }
     
-    @Test
-    public void testUpdatingAnObjectWithARaltionshipThatDoesntAlreadyExistInTheDatabase() {
-        fail("Not implemented yet");
-    }
     
     @Test
     public void testUpdatingInDb() throws DataConnectionException {
