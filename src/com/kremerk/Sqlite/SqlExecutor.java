@@ -776,7 +776,7 @@ public class SqlExecutor<T> {
                 }
                 boolean relationshipsNeedToBeAdded = relationships.size() > 0 && (statementType == StatementType.INSERT || statementType == StatementType.UPDATE);
                 if(relationshipsNeedToBeAdded) {
-                    if(statementType == StatementType.INSERT) {
+                    if(statementType == StatementType.INSERT || statementType == StatementType.UPDATE) {
                         for(Relationship relationship : relationships.values()) {
                             addRelationshipForInsert(relationship);
                         }

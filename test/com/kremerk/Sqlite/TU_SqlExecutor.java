@@ -13,6 +13,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.After;
 import org.junit.Test;
 
 import com.kremerk.Sqlite.TestClass.AccessGroup;
@@ -24,6 +25,17 @@ import com.kremerk.Sqlite.TestClass.User;
 import com.kremerk.Sqlite.TestClass.UserAccessGroup;
 
 public class TU_SqlExecutor {
+    
+    @After
+    public void tearDown() throws DataConnectionException {
+        DataConnectionManager.init("test/test.db");
+        
+        e.delete(User.class).where("name").like("%").execute();
+        groupExecutor.delete(AccessGroup.class).where("name").like("%").execute();
+        uagExecutor.delete(UserAccessGroup.class).where("userId").like("%").execute();
+        thingExecutor.delete(Thing.class).where("name").like("%").execute();
+        te.delete(TestObject.class).where("stringType").like("%").execute();
+    }
 
     @Test
     public void testBasicSelectStatement() throws DataConnectionException {
@@ -237,6 +249,19 @@ public class TU_SqlExecutor {
         deleteThing("Thing2");
         deleteThing("Thing3");
     }
+    
+    @Test
+    public void testGettingARelationshipObjectWhenNoObjectsExist() throws DataConnectionException {
+        createUser("Nick");
+        
+        User nick = e.select(User.class).getFirst();
+        List<Thing> nicksThings = nick.getThings();
+        
+        assertTrue("The collection should be empty and not null", nicksThings != null);
+        assertEquals("The collection should be empty", 0, nicksThings.size());
+        
+        deleteUser(nick);
+    }
 
     @Test
     public void testToMakeSureNonRelationshipObjectArentProxies() throws DataConnectionException {
@@ -255,7 +280,7 @@ public class TU_SqlExecutor {
     }
     
     @Test
-    public void testCreatingAnObjectWithARelationshipThatDoesntExistInTheDatabase() throws DataConnectionException {
+    public void testCreatingAnObjectWithARelationshipWithAnObjectThatDoesntExistInTheDatabase() throws DataConnectionException {
         DataConnectionManager.init("test/test.db");
         User u = new User();
         u.setName("nick");
@@ -279,7 +304,7 @@ public class TU_SqlExecutor {
     }
     
     @Test
-    public void testCreatingAnObjectWithARelationshipThatAlreadyExistsInTheDatabase() throws DataConnectionException {
+    public void testCreatingAnObjectWithARelationshipWithAnObjectThatAlreadyExistsInTheDatabase() throws DataConnectionException {
         DataConnectionManager.init("test/test.db");
         Thing t = new Thing();
         t.setName("Thing1");
@@ -304,7 +329,7 @@ public class TU_SqlExecutor {
     }
     
     @Test
-    public void testUpdatingAnObjectWithARaltionshipThatDoesntAlreadyExistInTheDatabase() throws DataConnectionException {
+    public void testUpdatingAnObjectWithARealtionshipWithAnObjectThatDoesntAlreadyExistInTheDatabase() throws DataConnectionException {
         createUser("Nick");
         
         Thing t = new Thing();
@@ -326,10 +351,35 @@ public class TU_SqlExecutor {
     }   
     
     @Test
-    public void testUpdatingAnObjectWithARelationshipThatAlreadyExistsInTheDatabase() throws DataConnectionException {
-        fail("Not implemented yet");
+    public void testUpdatingAnObjectWithARelationshipWithAnObjectThatAlreadyExistsInTheDatabase() throws DataConnectionException {
+        createUser("Nick");
+        
+        Thing t = new Thing();
+        t.setName("Thing1");
+        thingExecutor.insert(t).execute();
+        
+        Thing thing = thingExecutor.select(Thing.class).where("name").eq("Thing1").getFirst();
+
+        User u = e.select(User.class).where("name").eq("Nick").getFirst();
+        u.setThings(Arrays.asList(thing));
+        
+        e.update(u).execute();
+        
+        User nick = e.select(User.class).getFirst();
+        List<Thing> nicksThings = nick.getThings();
+        assertEquals(1, nicksThings.size());
+        assertEquals("Thing1", nicksThings.get(0).getName());
+        
+        deleteUser(nick);
+        deleteThing("Thing1");
     }
     
+    @Test
+    public void testUpdatingAnObjectThatAlreadyHasRelatedObjectsButAreAddingANewRelatedObject() throws DataConnectionException {
+        // This would be if we have an object in the DB that already has some related objects in the db
+        // and we're adding an additional related objected to that object.
+        fail();
+    }
     
     @Test
     public void testUpdatingInDb() throws DataConnectionException {
@@ -589,6 +639,6 @@ public class TU_SqlExecutor {
     private SqlExecutor<AccessGroup> groupExecutor = new SqlExecutor<AccessGroup>();
     private SqlExecutor<UserAccessGroup> uagExecutor = new SqlExecutor<UserAccessGroup>();
     private SqlExecutor<Thing> thingExecutor = new SqlExecutor<Thing>();
-    private SqlExecutor<com.kremerk.Sqlite.TestClass.TestObject> te = new SqlExecutor<com.kremerk.Sqlite.TestClass.TestObject>();
+    private SqlExecutor<TestObject> te = new SqlExecutor<TestObject>();
 
 }
