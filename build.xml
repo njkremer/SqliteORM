@@ -1,10 +1,13 @@
 <project name="SqliteORM" basedir=".">
     <property name="build" value="bin"/>
     <target name="jar">
-        <jar destfile="SqliteORM.jar"
-        basedir="${basedir}"
-        includes="${build}/** javadoc/** 3rdParty/**"
-        excludes="**/test.db **/TU_*.class, **/TestClass **/TestClass/**/*.class"
-        />
+        <jar destfile="SqliteORM.jar">
+            <fileset dir="${build}"
+                excludes="**/test.db **/TU_*.class, **/TestClass **/TestClass/**/*.class"
+            />
+            <fileset dir="${basedir}"
+                     includes="javadoc/** 3rdParty/**"
+            />
+        </jar>
     </target>
 </project>
