@@ -3,10 +3,11 @@
     <target name="jar">
         <jar destfile="SqliteORM.jar">
             <fileset dir="${build}"
-                excludes="**/test.db **/TU_*.class, **/TestClass **/TestClass/**/*.class"
+                excludes="**/test.db **/TU_*.class, **/TestClass **/TestClass/**/*.class .DS_Store"
             />
             <fileset dir="${basedir}"
                      includes="javadoc/** 3rdParty/**"
+                     excludes=".DS_Store"
             />
         </jar>
     </target>
