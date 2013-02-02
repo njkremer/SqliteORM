@@ -6,7 +6,7 @@
                 excludes="**/test.db **/TU_*.class, **/TestClass **/TestClass/**/*.class .DS_Store"
             />
             <fileset dir="${basedir}"
-                     includes="javadoc/** 3rdParty/**"
+                     includes="javadoc/** 3rdParty/** LICENSE.txt"
                      excludes=".DS_Store"
             />
         </jar>
