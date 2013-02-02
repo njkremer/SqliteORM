@@ -172,7 +172,10 @@ for function chaining. So when looking at the JavaDocs you may want to look at t
 <a name="moreInfo"></a>
 For more information on how to use this library please see the [GitHub Wiki](https://github.com/kremerk/SqliteORM/wiki)
 
+***
+
 <a name="license"></a>
+#Licen
 This software is licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
