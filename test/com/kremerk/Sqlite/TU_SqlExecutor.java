@@ -25,11 +25,11 @@ import com.kremerk.Sqlite.TestClass.User;
 import com.kremerk.Sqlite.TestClass.UserAccessGroup;
 
 public class TU_SqlExecutor {
-    
+
     @After
     public void tearDown() throws DataConnectionException {
         DataConnectionManager.init("test/test.db");
-        
+
         e.delete(User.class).where("name").like("%").execute();
         groupExecutor.delete(AccessGroup.class).where("name").like("%").execute();
         uagExecutor.delete(UserAccessGroup.class).where("userId").like("%").execute();
@@ -94,7 +94,7 @@ public class TU_SqlExecutor {
         String sql = executor.delete(User.class).where("name").eq("nick").getQuery();
         assertEquals("delete from user where user.name = ?;", sql);
     }
-    
+
     @Test
     public void testOneJoin() throws DataConnectionException {
         SqlExecutor<User> executor = new SqlExecutor<User>();
@@ -102,9 +102,8 @@ public class TU_SqlExecutor {
             .join(UserAccessGroup.class, "userId", User.class, "id")
             .where(UserAccessGroup.class, "userId").eq(5).getQuery();
         assertEquals("select user.* from user join useraccessgroup on useraccessgroup.userId = user.id where useraccessgroup.userId = ?;", sql);
-        
     }
-    
+
     @Test
     public void testMultipeJoins() throws DataConnectionException {
         SqlExecutor<User> executor = new SqlExecutor<User>();
@@ -113,9 +112,8 @@ public class TU_SqlExecutor {
             .join(AccessGroup.class, "id", UserAccessGroup.class, "groupId")
             .where(AccessGroup.class, "id").eq(5).getQuery();
         assertEquals("select user.* from user join useraccessgroup on useraccessgroup.userId = user.id join accessgroup on accessgroup.id = useraccessgroup.groupId where accessgroup.id = ?;", sql);
-        
     }
-    
+
     @Test
     public void testAOneToManyRelationship() throws DataConnectionException {
         SqlExecutor<Thing> thingExectuor = new SqlExecutor<Thing>();
@@ -123,11 +121,11 @@ public class TU_SqlExecutor {
         u.setId(1);
         u.setName("Nick");
         u.setPassword("123456");
-        
+
         String sql = thingExectuor.select(Thing.class).from(u).getQuery();
         assertEquals("select thing.* from thing join user on user.id = thing.userId;", sql);
     }
-    
+
     @Test
     public void testAOneToManyRelationshipWithAWhereClause() throws DataConnectionException {
         SqlExecutor<Thing> thingExectuor = new SqlExecutor<Thing>();
@@ -135,16 +133,16 @@ public class TU_SqlExecutor {
         u.setId(1);
         u.setName("Nick");
         u.setPassword("123456");
-        
+
         String sql = thingExectuor.select(Thing.class).from(u).where("name").eq("blah").getQuery();
         assertEquals("select thing.* from thing join user on user.id = thing.userId where thing.name = ?;", sql);
     }
-    
+
     @Test
     public void testAOneToManyRelationshipWithWrongContainerType() {
         SqlExecutor<Thing> thingExectuor = new SqlExecutor<Thing>();
         BadOneToMany obj = new BadOneToMany();
-        
+
         try {
             thingExectuor.select(Thing.class).from(obj).getQuery();
             fail("An exception should have been thrown");
@@ -153,8 +151,7 @@ public class TU_SqlExecutor {
             assertEquals("The return type of a OneToMany relationship must be a List Type for field things", e.getMessage());
         }
     }
-    
-    
+
     @Test
     public void testSelectingFromAnObjectThatHasNoPK() {
         SqlExecutor<AccessGroup> accessGroup = new SqlExecutor<AccessGroup>();
@@ -167,7 +164,7 @@ public class TU_SqlExecutor {
             assertEquals("pkField on the target object couldn't be found... it's probably not declared on the object. To use this method the target object must have a PrimaryKey defined.", e.getMessage());
         }
     }
-    
+
     @Test
     public void testSelectingTheWrongTypeFromAClassThatHasAOneToManyRelationship() {
         SqlExecutor<AccessGroup> accessGroup = new SqlExecutor<AccessGroup>();
@@ -180,7 +177,7 @@ public class TU_SqlExecutor {
             assertEquals("A OneToMany was found, however it wasn't a list of type com.kremerk.Sqlite.TestClass.AccessGroup", e.getMessage());
         }
     }
-    
+
     @Test
     public void testSelectingFromAnObjectThatHasNoOneToManyRelationship() {
         SqlExecutor<AccessGroup> accessGroup = new SqlExecutor<AccessGroup>();
@@ -229,37 +226,44 @@ public class TU_SqlExecutor {
         deleteUser(users.get(0));
         deleteUser(users.get(1));
     }
-    
+
+    @Test
+    public void testGetFirstWithEmptyResultSet() throws DataConnectionException {
+        User u = SqlStatement.select(User.class).getFirst();
+
+        assertNull("Empty data set, no object should be returned", u);
+    }
+
     @Test
     public void testGettingARelationshipObjectDireclty() throws DataConnectionException {
         createUser("Nick");
         createThing("Thing1");
         createThing("Thing2");
         createThing("Thing3");
-        
+
         User nick = e.select(User.class).getFirst();
         List<Thing> nicksThings = nick.getThings();
         assertEquals(3, nicksThings.size());
         assertEquals("Thing1", nicksThings.get(0).getName());
         assertEquals("Thing2", nicksThings.get(1).getName());
         assertEquals("Thing3", nicksThings.get(2).getName());
-        
+
         deleteUser(nick);
         deleteThing("Thing1");
         deleteThing("Thing2");
         deleteThing("Thing3");
     }
-    
+
     @Test
     public void testGettingARelationshipObjectWhenNoObjectsExist() throws DataConnectionException {
         createUser("Nick");
-        
+
         User nick = e.select(User.class).getFirst();
         List<Thing> nicksThings = nick.getThings();
-        
+
         assertTrue("The collection should be empty and not null", nicksThings != null);
         assertEquals("The collection should be empty", 0, nicksThings.size());
-        
+
         deleteUser(nick);
     }
 
@@ -267,120 +271,117 @@ public class TU_SqlExecutor {
     public void testToMakeSureNonRelationshipObjectArentProxies() throws DataConnectionException {
         createUser("Nick");
         createThing("Thing1");
-        
+
         User nick = e.select(User.class).getFirst();
         Thing nicksThing = nick.getThings().get(0);
-        
+
         assertTrue( "The User object has a relationship and should therefore have faulting, which means it shuld not be of time User.class.", nick.getClass() != User.class);
         assertEquals("Thing doesn't have a relationship and should be the an instance of Thing.class", nicksThing.getClass() , Thing.class);
-        
+
         deleteUser(nick);
         deleteThing("Thing1");
-
     }
-    
+
     @Test
     public void testCreatingAnObjectWithARelationshipWithAnObjectThatDoesntExistInTheDatabase() throws DataConnectionException {
         DataConnectionManager.init("test/test.db");
         User u = new User();
         u.setName("nick");
         u.setPassword("123456");
-        
+
         Thing t = new Thing();
         t.setName("Thing1");
-        
+
         u.setThings(Arrays.asList(t));
-        
+
         e.insert(u).execute();
-        
+
         User nick = e.select(User.class).getFirst();
         List<Thing> nicksThings = nick.getThings();
         assertEquals(1, nicksThings.size());
         assertEquals("Thing1", nicksThings.get(0).getName());
-        
+
         deleteUser(nick);
         deleteThing("Thing1");
-        
     }
-    
+
     @Test
     public void testCreatingAnObjectWithARelationshipWithAnObjectThatAlreadyExistsInTheDatabase() throws DataConnectionException {
         DataConnectionManager.init("test/test.db");
         Thing t = new Thing();
         t.setName("Thing1");
         thingExecutor.insert(t).execute();
-        
+
         Thing thing = thingExecutor.select(Thing.class).where("name").eq("Thing1").getFirst();
-        
+
         User u = new User();
         u.setName("nick");
         u.setPassword("123456");
         u.setThings(Arrays.asList(thing));
-        
+
         e.insert(u).execute();
-        
+
         User nick = e.select(User.class).getFirst();
         List<Thing> nicksThings = nick.getThings();
         assertEquals(1, nicksThings.size());
         assertEquals("Thing1", nicksThings.get(0).getName());
-        
+
         deleteUser(nick);
         deleteThing("Thing1");
     }
-    
+
     @Test
     public void testUpdatingAnObjectWithARealtionshipWithAnObjectThatDoesntAlreadyExistInTheDatabase() throws DataConnectionException {
         createUser("Nick");
-        
+
         Thing t = new Thing();
         t.setName("Thing1");
-        
+
         User u = e.select(User.class).where("name").eq("Nick").getFirst();
         u.setThings(Arrays.asList(t));
-        
+
         e.update(u).execute();
-        
+
         User nick = e.select(User.class).getFirst();
         List<Thing> nicksThings = nick.getThings();
         assertEquals(1, nicksThings.size());
         assertEquals("Thing1", nicksThings.get(0).getName());
-        
+
         deleteUser(nick);
         deleteThing("Thing1");
-        
-    }   
-    
+    }
+
     @Test
     public void testUpdatingAnObjectWithARelationshipWithAnObjectThatAlreadyExistsInTheDatabase() throws DataConnectionException {
         createUser("Nick");
-        
+
         Thing t = new Thing();
         t.setName("Thing1");
         thingExecutor.insert(t).execute();
-        
+
         Thing thing = thingExecutor.select(Thing.class).where("name").eq("Thing1").getFirst();
 
         User u = e.select(User.class).where("name").eq("Nick").getFirst();
         u.setThings(Arrays.asList(thing));
-        
+
         e.update(u).execute();
-        
+
         User nick = e.select(User.class).getFirst();
         List<Thing> nicksThings = nick.getThings();
         assertEquals(1, nicksThings.size());
         assertEquals("Thing1", nicksThings.get(0).getName());
-        
+
         deleteUser(nick);
         deleteThing("Thing1");
     }
-    
+
     @Test
     public void testUpdatingAnObjectThatAlreadyHasRelatedObjectsButAreAddingANewRelatedObject() throws DataConnectionException {
         // This would be if we have an object in the DB that already has some related objects in the db
         // and we're adding an additional related objected to that object.
         fail();
     }
-    
+
     @Test
     public void testUpdatingInDb() throws DataConnectionException {
         createUser("Nick");
@@ -437,35 +438,35 @@ public class TU_SqlExecutor {
         u.setId(new Long(45));
         e.update(u).execute();
     }
-    
+
     @Test
     public void testJoinInDb() throws DataConnectionException {
         createUser("Nick");
         createGroup("Admin");
         createGroup("PowerUser");
         createGroup("User");
-        
+
         User nick = e.select(User.class).getList().get(0);
         List<AccessGroup> groups = groupExecutor.select(AccessGroup.class).getList();
-        
+
         createUserGroupLink(nick.getId(), groups.get(0).getId());
         createUserGroupLink(nick.getId(), groups.get(1).getId());
-        
+
         List<AccessGroup> nicksGroups = groupExecutor.select(AccessGroup.class)
         .join(UserAccessGroup.class, "groupId", AccessGroup.class, "id")
         .join(User.class, "id", UserAccessGroup.class, "userId")
         .where(User.class, "name").eq("Nick").getList();
-        
+
         assertEquals(2, nicksGroups.size());
         assertEquals("Admin", nicksGroups.get(0).getName());
         assertEquals("PowerUser", nicksGroups.get(1).getName());
-        
+
         deleteUser(nick);
         deleteGroup("Admin");
         deleteGroup("PowerUser");
         deleteGroup("User");
         deleteUserGroupLinks(nick.getId());
-        
+
     }
 
     @Test
@@ -528,7 +529,7 @@ public class TU_SqlExecutor {
         assertEquals("Hello World!", test2.getStringType());
         assertEquals(calendar.getTime().getTime(), test2.getDateType().getTime());
         assertEquals(true, test2.isBooleanType());
-        
+
         calendar.add(Calendar.HOUR, 1);
         test2.setDateType(calendar.getTime());
         test2.setDoubleType(25.6);
@@ -537,11 +538,11 @@ public class TU_SqlExecutor {
         test2.setLongType(12345l);
         test2.setStringType("Goodbye World!");
         test2.setBooleanType(false);
-        
+
         te.update(test2).where("intType").eq(42).execute();
-        
+
         test = te.select(TestObject.class).getList().get(0);
-        
+
         assertEquals(25.6, test.getDoubleType(), 0.0);
         assertEquals(new Float(6.28318f), test.getFloatType());
         assertEquals(new Integer(100), test.getIntType());
@@ -569,7 +570,7 @@ public class TU_SqlExecutor {
 
         deleteUser(user);
     }
-    
+
     public class ThreadTest implements Runnable {
         public ThreadTest(int i) throws DataConnectionException {
             this.i = i;
@@ -585,10 +586,9 @@ public class TU_SqlExecutor {
                 throw new RuntimeException(e);
             }
         }
-        
+
         private int i;
         private SqlExecutor<?> e;
-
     }
 
     public void createUser(String name) throws DataConnectionException {
@@ -602,35 +602,35 @@ public class TU_SqlExecutor {
     public void deleteUser(User user) throws DataConnectionException {
         e.delete(user).execute();
     }
-    
+
     public void createGroup(String name) throws DataConnectionException {
         AccessGroup group = new AccessGroup();
         group.setName(name);
         groupExecutor.insert(group).execute();
     }
-    
+
     public void deleteGroup(String name) throws DataConnectionException {
         groupExecutor.delete(AccessGroup.class).where("name").eq(name).execute();
     }
-    
+
     public void createUserGroupLink(long userId, long groupId) throws DataConnectionException {
         UserAccessGroup uag = new UserAccessGroup();
         uag.setGroupId(groupId);
         uag.setUserId(userId);
         uagExecutor.insert(uag).execute();
     }
-    
+
     public void deleteUserGroupLinks(long userId) throws DataConnectionException {
         uagExecutor.delete(UserAccessGroup.class).where("userId").eq(userId).execute();
     }
-    
+
     public void createThing(String thingName) throws DataConnectionException {
         Thing thing = new Thing();
         thing.setName(thingName);
         thing.setUserId(1);
         thingExecutor.insert(thing).execute();
     }
-    
+
     public void deleteThing(String thingName) throws DataConnectionException {
         thingExecutor.delete(Thing.class).where("name").eq(thingName).execute();
     }

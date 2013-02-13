@@ -424,7 +424,9 @@ public class SqlExecutor<T> {
      * @throws DataConnectionException
      */
     public T getFirst() throws DataConnectionException {
-        return getList().get(0);
+        List<T> items = getList();
+        
+        return items.size() > 0 ? items.get(0) : null;
     }
 
     /**
