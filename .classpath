@@ -10,5 +10,6 @@
 	<classpathentry kind="lib" path="3rdParty/lib/org.springframework.aop-3.1.2.RELEASE.jar"/>
 	<classpathentry kind="lib" path="3rdParty/lib/org.springframework.core-3.1.2.RELEASE.jar"/>
 	<classpathentry kind="lib" path="3rdParty/lib/sqlite-jdbc-3.7.2.jar"/>
+	<classpathentry kind="lib" path="3rdParty/lib/log4j-1.2.17.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

@@ -18,11 +18,10 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
+import org.apache.log4j.Logger;
 import org.springframework.aop.framework.ProxyFactory;
-
 import com.kremerk.Sqlite.JoinExecutor.JoinType;
 import com.kremerk.Sqlite.Annotations.AutoIncrement;
 import com.kremerk.Sqlite.Annotations.OneToMany;
@@ -34,9 +33,8 @@ import com.kremerk.Sqlite.utils.SqliteUtils;
  * Used to continue a {@linkplain SqlStatement} to interact with the database.
  * 
  * <p>Typically this class is not instantiated outright, instead use {@linkplain SqlStatement#select(Class)},
- * {@linkplain SqlStatement#update(Object)}, {@linkplain SqlStatement#insert(Object)},
- * {@linkplain SqlStatement#delete(Class)}, or {@linkplain SqlStatement#delete(Object)} to create an instance of
- * this class.
+ *    {@linkplain SqlStatement#update(Object)}, {@linkplain SqlStatement#insert(Object)}, {@linkplain SqlStatement#delete(Class)},
+ *    or {@linkplain SqlStatement#delete(Object)} to create an instance of this class.
  * 
  * @param <T> A class that is a POJO that "maps" to a table in the database.
  */
@@ -47,7 +45,7 @@ public class SqlExecutor<T> {
      * 
      * @param clazz A reference to the Object.class that you are retrieving from the database.
      * @return A {@linkplain SqlExecutor} used for function chaining.
-     * @throws DataConnectionException 
+     * @throws DataConnectionException
      */
     public SqlExecutor<T> select(Class<T> clazz) throws DataConnectionException {
         reset();
@@ -63,7 +61,7 @@ public class SqlExecutor<T> {
      * 
      * @param databaseObject An object that was queried from the database that has been updated.
      * @return A {@linkplain SqlExecutor} used for function chaining.
-     * @throws DataConnectionException 
+     * @throws DataConnectionException
      */
     @SuppressWarnings("unchecked")
     public SqlExecutor<T> update(Object databaseObject) throws DataConnectionException {
@@ -130,18 +128,17 @@ public class SqlExecutor<T> {
         statementType = StatementType.DELETE;
         return this;
     }
-    
 
     /**
      * Used to do a SQL Join with another POJO/Table.
      * 
-     * <p>A simple example of using joining to get all of a user's things, given the user's name:
+     * <p>A simple example of using joining to get all of a user's things, given the user's name:</p>
      * 
      * <p>
      * <pre>
-     * new SqlStatement().select(Thing.class).join(User.class, "id", Thing.class, "userId")
-     *                                       .where(User.class, "name").eq("Bob").getList()
-     *</pre> 
+     * new SqlStatement().select(Thing.class).join(User.class, &quot;id&quot;, Thing.class, &quot;userId&quot;).where(User.class, &quot;name&quot;).eq(&quot;Bob&quot;).getList()
+     * </pre>
+     * </p>
      * 
      * @param leftClazz The (left) class/table you're joining to.
      * @param leftField The field in the left class/table you're joining on.
@@ -150,7 +147,7 @@ public class SqlExecutor<T> {
      * @return A {@linkplain SqlExecutor} used for function chaining.
      */
     public SqlExecutor<T> join(Class<?> leftClazz, String leftField, Class<?> rightClazz, String rightField) {
-        if(firstJoin) {
+        if (firstJoin) {
             queryParts.put(StatementParts.JOIN, "");
             firstJoin = false;
         }
@@ -159,18 +156,18 @@ public class SqlExecutor<T> {
         queryParts.put(StatementParts.JOIN, queryParts.get(StatementParts.JOIN).concat(join));
         return this;
     }
-    
+
     /**
      * Used to do a SQL Join with another POJO/Table, with specifying the {@linkplain JoinType}
-     *  
-     * <p>A simple example of using joining to get all of a user's things, given the user's name:
+     * 
+     * <p>A simple example of using joining to get all of a user's things, given the user's name:</p>
      * 
      * <p>
      * <pre>
-     * new SqlStatement().select(Thing.class).join(User.class, "id", Thing.class, "userId")
-     *                                       .where(User.class, "name").eq("Bob").getList()
-     *</pre> 
-     *
+     * new SqlStatement().select(Thing.class).join(User.class, &quot;id&quot;, Thing.class, &quot;userId&quot;).where(User.class, &quot;name&quot;).eq(&quot;Bob&quot;).getList()
+     * </pre>
+     * </p>
+     * 
      * @param leftClazz The (left) class/table you're joining to.
      * @param leftField The field in the left class/table you're joining on.
      * @param rightClazz The (right) class/table you're joining from.
@@ -182,52 +179,53 @@ public class SqlExecutor<T> {
         joinExecutor.setJoinType(joinType);
         return join(leftClazz, leftField, rightClazz, rightField);
     }
-    
-    
-//    User {
-//        @OneToMany(userId) // the parameter is the foreignKey in the AccessGroup table
-//        private List<AccessGroup> accessGroup;
-//        }
-//
-//        Or
-//
-//        User {
-//        @ManyToMany(userId, groupId) // maybe the go in order of this object's foreign key, then the return objects foreign key... depends on how much "auto magical" stuff we want to do...
-//        private List<AccessGroup> accessGroup;
-//        // another option would be to spell it all out... @ManyToMany(id, userId, id, groupId) first two are the user's id and it's foreign key in the "junction table" then the accessGroups id, and it's foreign key in the junction table)
-//        }
-//    assertEquals("select thing.* from thing join user on user.id = thing.userId", sql);
+
+    // User {
+    // @OneToMany(userId) // the parameter is the foreignKey in the AccessGroup table
+    // private List<AccessGroup> accessGroup;
+    // }
+    //
+    // Or
+    //
+    // User {
+    // @ManyToMany(userId, groupId) // maybe the go in order of this object's foreign key, then the return objects foreign key... depends on how much "auto magical" stuff we want to do...
+    // private List<AccessGroup> accessGroup;
+    // // another option would be to spell it all out... @ManyToMany(id, userId, id, groupId) first two are the user's id and it's foreign key in the "junction table" then the accessGroups id, and it's foreign key in the junction table)
+    // }
+    // assertEquals("select thing.* from thing join user on user.id = thing.userId", sql);
     /**
-     * Allows to select a {@linkplain List} of Objects of type T (as specified by class type passed into
-     * {@linkplain SqlExecutor#select(Class)}) from the POJO passed into this method. The POJO that is passed in must have
-     * a {@linkplain OneToMany} relationship setup in it to property have this method work.
+     * Allows to select a {@linkplain List} of Objects of type T (as specified by class type passed into {@linkplain SqlExecutor#select(Class)}) from the POJO passed into this method. The POJO that is passed in must have a {@linkplain OneToMany} relationship setup in it to property have this method work.
      * 
-     * <p>You can use the returned {@linkplain SqlExecutor} object to limit the resulting list by chaining a {@linkplain SqlExecutor#where(String) where} clause after this method.
+     * <p>You can use the returned {@linkplain SqlExecutor} object to limit the resulting list by chaining a {@linkplain SqlExecutor#where(String) where} clause after this method.</p>
      * 
-     * <p> Example usage would be:
+     * <p>
+     * Example usage would be:
      * 
      * <pre>
-     * User nick = new SqlStatement().select(User.class).where("name").eq("Nick");
+     * User nick = new SqlStatement().select(User.class).where(&quot;name&quot;).eq(&quot;Nick&quot;);
      * List&lt;Thing&gt; nicksThings = new SqlStatement().select(Thing.class).from(nick).getList();
      * </pre>
+     * </p>
      * 
-     * <p>If you only wanted the things where it's value was 5 you could do:
+     * <p>
+     * If you only wanted the things where it's value was 5 you could do:
      * 
      * <pre>
-     * User nick = new SqlStatement().select(User.class).where("name").eq("Nick");
-     * List&lt;Thing&gt; nicksThings = new SqlStatement().select(Thing.class).from(nick).where("value").eq(5).getList();
+     * User nick = new SqlStatement().select(User.class).where(&quot;name&quot;).eq(&quot;Nick&quot;);
+     * List&lt;Thing&gt; nicksThings = new SqlStatement().select(Thing.class).from(nick).where(&quot;value&quot;).eq(5).getList();
      * </pre>
+     * </p>
      * 
-     * <p>See {@link OneToMany} for more information on setting up this relationship.
+     * <p>See {@link OneToMany} for more information on setting up this relationship.</p>
      */
     public SqlExecutor<T> from(Object object) throws DataConnectionException {
         String objectPk = this.getPkField(object.getClass());
         String thisFk = this.getFkField(object.getClass());
-        
+
         if (objectPk == null) {
             throw new DataConnectionException("pkField on the target object couldn't be found... it's probably not declared on the object. To use this method the target object must have a PrimaryKey defined.");
         }
-        if(thisFk == null) {
+        if (thisFk == null) {
             throw new DataConnectionException(String.format("A OneToMany was found, however it wasn't a list of type %s", this.clazz.getName()));
         }
 
@@ -235,10 +233,7 @@ public class SqlExecutor<T> {
     }
 
     /**
-     * Used to start a "where clause" when querying/updating/deleting for an Object from the database. This will
-     * return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database
-     * call. Additional fields can be added to your "where clause" by using the
-     * {@linkplain SqlExecutor#and(String)} method.
+     * Used to start a "where clause" when querying/updating/deleting for an Object from the database. This will return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database call. Additional fields can be added to your "where clause" by using the {@linkplain SqlExecutor#and(String)} method.
      * 
      * @param field The field of the object/database table you want to limit by.
      * @return a {@linkplain WhereExecutor} to be used in conjunction with the <b>where</b> method.
@@ -247,15 +242,11 @@ public class SqlExecutor<T> {
     public WhereExecutor<T> where(String field) throws DataConnectionException {
         return where(this.clazz, field);
     }
-    
+
     /**
-     * Used to start a "where clause" when querying/updating/deleting for an Object from the database. This will
-     * return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database
-     * call. Additional fields can be added to your "where clause" by using the
-     * {@linkplain SqlExecutor#and(String)} method.
+     * Used to start a "where clause" when querying/updating/deleting for an Object from the database. This will return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database call. Additional fields can be added to your "where clause" by using the {@linkplain SqlExecutor#and(String)} method.
      * 
-     * <P>This version is to explicitly state what Entity the field belongs to. This is typically needed when doing
-     * a {@linkplain SqlExecutor#join(Class, String, Class, String) join}.
+     * <p>This version is to explicitly state what Entity the field belongs to. This is typically needed when doing a {@linkplain SqlExecutor#join(Class, String, Class, String) join}.</p>
      * 
      * @param clazz The class who the field belongs to.
      * @param field The field of the object/database table you want to limit by.
@@ -280,10 +271,7 @@ public class SqlExecutor<T> {
     }
 
     /**
-     * Used to continue a "where clause" when querying/updating/deleting for an Object from the database. This will
-     * return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database
-     * call. Additional fields can be added to your "where clause" by using the
-     * {@linkplain SqlExecutor#and(String)} method.
+     * Used to continue a "where clause" when querying/updating/deleting for an Object from the database. This will return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database call. Additional fields can be added to your "where clause" by using the {@linkplain SqlExecutor#and(String)} method.
      * 
      * @param field Additional fields of the object/database table you want to limit by.
      * @return A {@linkplain WhereExecutor} to be used in conjunction with the <b>and</b> method.
@@ -291,15 +279,11 @@ public class SqlExecutor<T> {
     public WhereExecutor<T> and(String field) {
         return and(this.clazz, field);
     }
-    
+
     /**
-     * Used to continue a "where clause" when querying/updating/deleting for an Object from the database. This will
-     * return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database
-     * call. Additional fields can be added to your "where clause" by using the
-     * {@linkplain SqlExecutor#and(String)} method.
+     * Used to continue a "where clause" when querying/updating/deleting for an Object from the database. This will return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database call. Additional fields can be added to your "where clause" by using the {@linkplain SqlExecutor#and(String)} method.
      * 
-     * <P>This version is to explicitly state what Entity the field belongs to. This is typically needed when doing
-     * a {@linkplain SqlExecutor#join(Class, String, Class, String) join}.
+     * <p>This version is to explicitly state what Entity the field belongs to. This is typically needed when doing a {@linkplain SqlExecutor#join(Class, String, Class, String) join}.</p>
      * 
      * @param clazz The class who the field belongs to.
      * @param field Additional fields of the object/database table you want to limit by.
@@ -309,12 +293,9 @@ public class SqlExecutor<T> {
         queryParts.put(StatementParts.WHERE, queryParts.get(StatementParts.WHERE).concat(String.format(AND, clazz.getSimpleName().toLowerCase(), field)));
         return whereExecutor;
     }
-    
+
     /**
-     * Used to continue a "where clause" when querying/updating/deleting for an Object from the database. This will
-     * return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database
-     * call. Additional fields can be added to your "where clause" by using the
-     * {@linkplain SqlExecutor#and(String)} method.
+     * Used to continue a "where clause" when querying/updating/deleting for an Object from the database. This will return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database call. Additional fields can be added to your "where clause" by using the {@linkplain SqlExecutor#and(String)} method.
      * 
      * @param field Additional fields of the object/database table you want to limit by.
      * @return A {@linkplain WhereExecutor} to be used in conjunction with the <b>and</b> method.
@@ -322,12 +303,9 @@ public class SqlExecutor<T> {
     public WhereExecutor<T> or(String field) {
         return or(this.clazz, field);
     }
-    
+
     /**
-     * Used to continue a "where clause" when querying/updating/deleting for an Object from the database. This will
-     * return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database
-     * call. Additional fields can be added to your "where clause" by using the
-     * {@linkplain SqlExecutor#and(String)} method.
+     * Used to continue a "where clause" when querying/updating/deleting for an Object from the database. This will return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database call. Additional fields can be added to your "where clause" by using the {@linkplain SqlExecutor#and(String)} method.
      * 
      * @param field Additional fields of the object/database table you want to limit by.
      * @return A {@linkplain WhereExecutor} to be used in conjunction with the <b>and</b> method.
@@ -338,9 +316,7 @@ public class SqlExecutor<T> {
     }
 
     /**
-     * Used to sort the resulting list of Objects from the query. By default, the order will be ordered in
-     * ascending order by the field passed in. If you want to sort in descending order, use
-     * {@linkplain SqlExecutor#desc()} after calling this method.
+     * Used to sort the resulting list of Objects from the query. By default, the order will be ordered in ascending order by the field passed in. If you want to sort in descending order, use {@linkplain SqlExecutor#desc()} after calling this method.
      * 
      * @param field The field of the object/database table you want to sort the resulting list by.
      * @return A {@linkplain SqlExecutor} used for function chaining.
@@ -351,8 +327,7 @@ public class SqlExecutor<T> {
     }
 
     /**
-     * Used to explicitly say you want to sort in ascending order. Works in conjunction with
-     * {@linkplain SqlExecutor#orderBy(String)}.
+     * Used to explicitly say you want to sort in ascending order. Works in conjunction with {@linkplain SqlExecutor#orderBy(String)}.
      * 
      * @return A {@linkplain SqlExecutor} used for function chaining.
      */
@@ -372,8 +347,7 @@ public class SqlExecutor<T> {
     }
 
     /**
-     * Used to end a {@linkplain SqlStatement#update(Object) update}/{@linkplain SqlStatement#insert(Object)
-     * insert}/{@linkplain SqlStatement#delete(Class) delete} {@linkplain SqlStatement}.
+     * Used to end a {@linkplain SqlStatement#update(Object) update}/{@linkplain SqlStatement#insert(Object) insert}/{@linkplain SqlStatement#delete(Class) delete} {@linkplain SqlStatement}.
      * 
      * @throws DataConnectionException
      */
@@ -400,9 +374,7 @@ public class SqlExecutor<T> {
     }
 
     /**
-     * Returns a {@linkplain List} of Objects of type T (as specified by class type passed into
-     * {@linkplain SqlExecutor#select(Class)}) that result from the query built up with the
-     * {@linkplain SqlStatement}/{@linkplain SqlExecutor}.
+     * Returns a {@linkplain List} of Objects of type T (as specified by class type passed into {@linkplain SqlExecutor#select(Class)}) that result from the query built up with the {@linkplain SqlStatement}/{@linkplain SqlExecutor}.
      * 
      * @return A {@linkplain List} of Objects of type T that is the result from querying the database.
      * @throws DataConnectionException
@@ -417,28 +389,28 @@ public class SqlExecutor<T> {
             throw new DataConnectionException("An error occured when trying to get the list of " + clazz.getSimpleName() + " objects", e);
         }
     }
-    
+
     /**
      * A convenience method to return the first object of a given query which would normally be returned by {@link SqlExecutor#getList}.
+     * 
      * @return An object of type T that is the result of querying the database.
      * @throws DataConnectionException
      */
     public T getFirst() throws DataConnectionException {
         List<T> items = getList();
-        
+
         return items.size() > 0 ? items.get(0) : null;
     }
 
     /**
-     * Returns a {@linkplain List} of {@linkplain Map Maps} which map from a field/database table column for the
-     * resulting query along with the passed in {@linkplain ColumnExpression}.
+     * Returns a {@linkplain List} of {@linkplain Map Maps} which map from a field/database table column for the resulting query along with the passed in {@linkplain ColumnExpression}.
      * 
-     * <p> The value of the map is of type {@linkplain Object} and will need to be cast to the type of value you're
-     * expecting from the fields/columns you specified in your {@linkplain ColumnExpression}.
+     * <p>
+     * The value of the map is of type {@linkplain Object} and will need to be cast to the type of value you're expecting from the fields/columns you specified in your {@linkplain ColumnExpression}.
+     * </p>
      * 
      * @param columnExpression A map expression to specify what columns you want back from the database.
-     * @return A {@linkplain List} of {@linkplain Map Maps} which are the result of the query with the passed in
-     * {@linkplain ColumnExpression}.
+     * @return A {@linkplain List} of {@linkplain Map Maps} which are the result of the query with the passed in {@linkplain ColumnExpression}.
      * @throws DataConnectionException
      */
     public List<Map<String, Object>> getColumns(ColumnExpression columnExpression) throws DataConnectionException {
@@ -451,8 +423,7 @@ public class SqlExecutor<T> {
             throw new DataConnectionException("Could not process the map results of the query.", e);
         }
     }
-    
-    
+
     String getQuery() throws DataConnectionException {
         StringBuilder builder = new StringBuilder();
         for (StatementParts key : queryParts.keySet()) {
@@ -460,16 +431,17 @@ public class SqlExecutor<T> {
         }
         return builder.toString().trim().concat(";");
     }
-    
+
     List<Object> getValues() {
         return this.values;
     }
-    
+
     LinkedHashMap<StatementParts, String> getQueryParts() {
         return this.queryParts;
     }
 
-    private List<T> processResults() throws SQLException, InstantiationException, IllegalAccessException, SecurityException, IllegalArgumentException, NoSuchMethodException, InvocationTargetException, NoSuchFieldException, DataConnectionException {
+    private List<T> processResults() throws SQLException, InstantiationException, IllegalAccessException, SecurityException, IllegalArgumentException,
+            NoSuchMethodException, InvocationTargetException, NoSuchFieldException, DataConnectionException {
         List<T> objects = new ArrayList<T>();
         int columnCount = resultSet.getMetaData().getColumnCount();
         ArrayList<String> columns = new ArrayList<String>();
@@ -539,7 +511,8 @@ public class SqlExecutor<T> {
         return objects;
     }
 
-    private void prepareUpdate(String field) throws IllegalArgumentException, IllegalAccessException, InvocationTargetException, DataConnectionException, SecurityException, NoSuchMethodException {
+    private void prepareUpdate(String field) throws IllegalArgumentException, IllegalAccessException, InvocationTargetException, DataConnectionException,
+            SecurityException, NoSuchMethodException {
         boolean first = true;
         queryParts.put(StatementParts.SET, "");
         for (Field classField : clazz.getDeclaredFields()) {
@@ -571,7 +544,8 @@ public class SqlExecutor<T> {
         }
     }
 
-    private void prepareInsert() throws IllegalArgumentException, IllegalAccessException, InvocationTargetException, SecurityException, NoSuchMethodException, DataConnectionException {
+    private void prepareInsert() throws IllegalArgumentException, IllegalAccessException, InvocationTargetException, SecurityException, NoSuchMethodException,
+            DataConnectionException {
         StringBuilder fieldsString = new StringBuilder("(");
         StringBuilder valuesString = new StringBuilder("values(");
 
@@ -599,8 +573,7 @@ public class SqlExecutor<T> {
                     if (field.getType() == Boolean.class && clazz.getDeclaredMethod(methodName.replaceFirst("is", "get"), (Class<?>[]) null) != null) {
                         throw new DataConnectionException("boolean fields must name their fields isValue, not getValue");
                     }
-                    // this means the field doesn't have a getter, so we're
-                    // moving on.
+                    // this means the field doesn't have a getter, so we're moving on.
                 }
             }
         }
@@ -610,7 +583,8 @@ public class SqlExecutor<T> {
     }
 
     private void replaceValues() throws SQLException, DataConnectionException {
-        System.out.println(String.format(getQuery().replaceAll("%", "%%").replaceAll("\\?", "%s"), values.toArray()));
+        logger.trace(String.format(getQuery().replaceAll("%", "%%").replaceAll("\\?", "%s"), values.toArray()));
+
         for (int i = 0; i < values.size(); i++) {
             Object object = values.get(i);
             if (object instanceof String) {
@@ -643,54 +617,54 @@ public class SqlExecutor<T> {
             }
         }
     }
-    
+
     @SuppressWarnings("unchecked")
-    private T createProxyObject(T object) throws DataConnectionException {       
+    private T createProxyObject(T object) throws DataConnectionException {
         relationships = findRelationships();
-        
-        if(relationships.size() > 0) {
+
+        if (relationships.size() > 0) {
             String objectPk = this.getPkField(this.clazz);
             if (objectPk == null) {
                 throw new DataConnectionException("Error when mapping relationships. PkField on the target object couldn't be found... it's probably not declared on the object. To use this method the target object must have a PrimaryKey defined.");
             }
             final Object pkValue = getPkValue(objectPk, object);
-            
+
             ProxyFactory proxyFactory = new ProxyFactory(object);
             proxyFactory.addAdvice(new MethodInterceptor() {
-                    public Object invoke(MethodInvocation methodInvocation) throws Throwable {
-                        String fieldName = SqliteUtils.lowercase(methodInvocation.getMethod().getName().replaceFirst("get", ""));
-                        if (relationships.keySet().contains(fieldName)) {
-                            // TODO Check to see if the internal variable for the collection is null, load if not. If it is
-                            // just return that already loaded instance, don't do more DB calls than needed.
-                            Relationship relationship = relationships.get(fieldName);
-                            return SqlStatement.select(relationship.getRelatedClassType()).where(relationship.getFk()).eq(pkValue).getList();
-                        }
-                        else if(methodInvocation.getMethod().getReturnType() == List.class) {
-                            throw new DataConnectionException(String.format("No OneToMany relationship could be found on a member variable that corresponds to the method %s", methodInvocation.getMethod().getName()));
-                        }
-                        return methodInvocation.getMethod().invoke(methodInvocation.getThis(), methodInvocation.getArguments());
+                public Object invoke(MethodInvocation methodInvocation) throws Throwable {
+                    String fieldName = SqliteUtils.lowercase(methodInvocation.getMethod().getName().replaceFirst("get", ""));
+                    if (relationships.keySet().contains(fieldName)) {
+                        // TODO Check to see if the internal variable for the collection is null, load if not. If it is
+                        // just return that already loaded instance, don't do more DB calls than needed.
+                        Relationship relationship = relationships.get(fieldName);
+                        return SqlStatement.select(relationship.getRelatedClassType()).where(relationship.getFk()).eq(pkValue).getList();
                     }
+                    else if (methodInvocation.getMethod().getReturnType() == List.class) {
+                        throw new DataConnectionException(String.format("No OneToMany relationship could be found on a member variable that corresponds to the method %s", methodInvocation.getMethod().getName()));
+                    }
+                    return methodInvocation.getMethod().invoke(methodInvocation.getThis(), methodInvocation.getArguments());
+                }
             });
             return (T) proxyFactory.getProxy();
         }
         return object;
     }
-    
+
     private Map<String, Relationship> findRelationships() throws DataConnectionException {
         Map<String, Relationship> relationshipMap = new HashMap<String, Relationship>();
-        
+
         Field[] fields = this.clazz.getDeclaredFields();
-        for(Field field : fields) {
-            boolean  hasAnnotation = field.isAnnotationPresent(OneToMany.class);
+        for (Field field : fields) {
+            boolean hasAnnotation = field.isAnnotationPresent(OneToMany.class);
             if (hasAnnotation) {
                 Class<?> targetClazz = field.getType();
-                if(targetClazz != List.class) {
+                if (targetClazz != List.class) {
                     throw new DataConnectionException(String.format("The return type of a OneToMany relationship must be a List Type for field %s", field.getName()));
                 }
                 relationshipMap.put(field.getName(), new Relationship(field));
             }
         }
-        
+
         return relationshipMap;
     }
 
@@ -713,27 +687,27 @@ public class SqlExecutor<T> {
             throw new DataConnectionException("Could not get pkValue", e);
         }
     }
-    
+
     private String getFkField(Class<?> clazz) throws DataConnectionException {
         String fkField = null;
         Field[] fields = clazz.getDeclaredFields();
         boolean annotationFound = false;
-        for(Field field : fields) {
+        for (Field field : fields) {
             Annotation annotation = field.getAnnotation(OneToMany.class);
             if (annotation != null) {
                 annotationFound = true;
                 Class<?> targetClazz = field.getType();
-                if(targetClazz != List.class) {
+                if (targetClazz != List.class) {
                     throw new DataConnectionException(String.format("The return type of a OneToMany relationship must be a List Type for field %s", field.getName()));
                 }
                 ParameterizedType genericType = (ParameterizedType) field.getGenericType();
                 Type[] types = genericType.getActualTypeArguments();
-                if((Class<?>) types[0] == this.clazz) {
+                if ((Class<?>) types[0] == this.clazz) {
                     fkField = ((OneToMany) annotation).value();
                 }
             }
         }
-        if(!annotationFound) {
+        if (!annotationFound) {
             throw new DataConnectionException(String.format("No OneToMany reationship could be found on the %s", clazz));
         }
         return fkField;
@@ -766,54 +740,56 @@ public class SqlExecutor<T> {
             }
             else {
                 statement.execute();
-                
-                
-                /* TODO This needs to be looked at... before going down the road of inserting the related objects, we might want
-                 to check if the list actually has any objects.
-                 The other problem is right at creation time the pk of the object might not be there... so we may want to write a join
-                 to do this update of the related objects...
-                 */ 
-                if(relationships == null) {
+
+                /*
+                 * TODO This needs to be looked at... before going down the road of inserting the related objects,
+                 *      we might want to check if the list actually has any objects. The other problem is right at
+                 *      creation time the pk of the object might not be there... so we may want to write a join to
+                 *      do this update of the related objects...
+                 */
+                if (relationships == null) {
                     relationships = findRelationships();
                 }
-                boolean relationshipsNeedToBeAdded = relationships.size() > 0 && (statementType == StatementType.INSERT || statementType == StatementType.UPDATE);
-                if(relationshipsNeedToBeAdded) {
-                    if(statementType == StatementType.INSERT || statementType == StatementType.UPDATE) {
-                        for(Relationship relationship : relationships.values()) {
+                boolean relationshipsNeedToBeAdded = relationships.size() > 0
+                        && (statementType == StatementType.INSERT || statementType == StatementType.UPDATE);
+                if (relationshipsNeedToBeAdded) {
+                    if (statementType == StatementType.INSERT || statementType == StatementType.UPDATE) {
+                        for (Relationship relationship : relationships.values()) {
                             addRelationshipForInsert(relationship);
                         }
                     }
                 }
-//                    Object thisObjectsPrimaryKey = this.getPkValue(this.getPkField(this.clazz), this.sqlObject);
-//                    for(Relationship relationship : relationships.values()) {
-//                        
-//                        // Get the list of related objects.
-//                        Method method = clazz.getDeclaredMethod(relationship.getterName(), (Class<?>[]) null);
-//                        List<?> relatedObjects = (List<?>) method.invoke(this, (Object []) null);
-//                        
-//                        // Call the foreign key setter on each of the objects, with the current object's primary key.
-//                        for(Object object : relatedObjects) {
-//                            Method objectsSetterMethod = object.getClass().getDeclaredMethod(relationship.foreignSetterName(), relationship.getFkClassType());
-//                            objectsSetterMethod.invoke(object, thisObjectsPrimaryKey);
-//                            SqlStatement.update(object);
-//                        }
-//                    }
-//                }
+                // Object thisObjectsPrimaryKey = this.getPkValue(this.getPkField(this.clazz), this.sqlObject);
+                // for(Relationship relationship : relationships.values()) {
+                //
+                // // Get the list of related objects.
+                // Method method = clazz.getDeclaredMethod(relationship.getterName(), (Class<?>[]) null);
+                // List<?> relatedObjects = (List<?>) method.invoke(this, (Object []) null);
+                //
+                // // Call the foreign key setter on each of the objects, with the current object's primary key.
+                // for(Object object : relatedObjects) {
+                // Method objectsSetterMethod = object.getClass().getDeclaredMethod(relationship.foreignSetterName(), relationship.getFkClassType());
+                // objectsSetterMethod.invoke(object, thisObjectsPrimaryKey);
+                // SqlStatement.update(object);
+                // }
+                // }
+                // }
             }
         }
-        catch(SQLException e) {
-            System.out.println(e.getErrorCode());
-            if(e.getMessage().contains("PRIMARY KEY must be unique")) {
-                throw new DataConnectionException("A @PrimaryKey needs to be defined on the class '"  + this.clazz.getSimpleName() + "' , since there is a primary key in the database.", e);
+        catch (SQLException e) {
+            logger.error(e.getErrorCode());
+            if (e.getMessage().contains("PRIMARY KEY must be unique")) {
+                throw new DataConnectionException("A @PrimaryKey needs to be defined on the class '" + this.clazz.getSimpleName() + "' , since there is a primary key in the database.", e);
             }
-            throw new DataConnectionException("Error executoing sql statement", e);
+            throw new DataConnectionException("Error executing sql statement", e);
         }
         catch (Exception e) {
             throw new DataConnectionException("Error executing sql statement", e);
         }
     }
 
-    private void processColumn(Object object, String columnName, ResultSet resultSet) throws SQLException, SecurityException, NoSuchMethodException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, NoSuchFieldException, DataConnectionException {
+    private void processColumn(Object object, String columnName, ResultSet resultSet) throws SQLException, SecurityException, NoSuchMethodException,
+            IllegalArgumentException, IllegalAccessException, InvocationTargetException, NoSuchFieldException, DataConnectionException {
         Object value = null;
         Class<?> type = clazz.getDeclaredField(columnName).getType();
         if (type == String.class) {
@@ -841,30 +817,30 @@ public class SqlExecutor<T> {
         Method method = clazz.getDeclaredMethod(methodName, type);
         method.invoke(object, value);
     }
-    
+
     private void addRelationshipForInsert(Relationship relationship) throws DataConnectionException {
         try {
             Method method = clazz.getDeclaredMethod(relationship.getterName(), (Class<?>[]) null);
-            List<?> relatedObjects = (List<?>) method.invoke(this.sqlObject, (Object []) null);
-            if(relatedObjects != null) {
-                for(Object object : relatedObjects) {
+            List<?> relatedObjects = (List<?>) method.invoke(this.sqlObject, (Object[]) null);
+            if (relatedObjects != null) {
+                for (Object object : relatedObjects) {
                     setupRelationshipForRelatedObject(relationship, object, relationship.getFk());
                 }
             }
         }
-        catch(Exception e) {
+        catch (Exception e) {
             throw new DataConnectionException("Error adding relationship on object insertion", e);
         }
     }
-    
+
     public void setupRelationshipForRelatedObject(Relationship relationship, Object object, String foreignKey) throws DataConnectionException {
         String primaryKey = getPkField(object.getClass());
         Object objectsPrimaryKey = getPkValue(primaryKey, object);
         Object thisObjectsPrimaryKey = this.getPkValue(this.getPkField(this.clazz), this.sqlObject);
         boolean thisSqlObjectIsNotUpToDate = SqliteUtils.isEmpty(thisObjectsPrimaryKey);
-        
+
         try {
-            if(thisSqlObjectIsNotUpToDate) {
+            if (thisSqlObjectIsNotUpToDate) {
                 ResultSet rs = statement.getGeneratedKeys();
                 rs.next();
                 thisObjectsPrimaryKey = rs.getLong(1);
@@ -872,12 +848,12 @@ public class SqlExecutor<T> {
             Method objectsSetterMethod = object.getClass().getDeclaredMethod(relationship.foreignSetterName(), relationship.getFkClassType());
             objectsSetterMethod.invoke(object, thisObjectsPrimaryKey);
         }
-        catch(Exception e) {
-            throw new DataConnectionException(String.format("Could not set the foreign key %s on the %s object",foreignKey, object.getClass()), e);
+        catch (Exception e) {
+            throw new DataConnectionException(String.format("Could not set the foreign key %s on the %s object", foreignKey, object.getClass()), e);
         }
-        
+
         boolean objectIsInDbAlready = SqlStatement.select(object.getClass()).where(primaryKey).eq(objectsPrimaryKey).getCount() > 0;
-        if(objectIsInDbAlready) {
+        if (objectIsInDbAlready) {
             SqlStatement.update(object).execute();
         }
         else {
@@ -887,7 +863,7 @@ public class SqlExecutor<T> {
 
     private void reset() throws DataConnectionException {
         try {
-            if(statement != null) {
+            if (statement != null) {
                 statement.close();
             }
         }
@@ -932,5 +908,5 @@ public class SqlExecutor<T> {
     private static final String SET = "set %s = ?";
     private static final String SET_AND = ", %s = ? ";
 
-    
+    private static final Logger logger = Logger.getLogger(SqlExecutor.class);
 }
