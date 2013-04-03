@@ -5,8 +5,8 @@
 Support has now been added for One-To-Many relationships.
 
 ## Quicklinks:
-* [API JavaDoc](http://kremerk.github.com/SqliteORM/javadoc/)
-* [GitHub Wiki](https://github.com/kremerk/SqliteORM/wiki)
+* [API JavaDoc](http://njkremer.github.com/SqliteORM/javadoc/)
+* [GitHub Wiki](https://github.com/njkremer/SqliteORM/wiki)
 
 This project is designed to be a very lightweight ORM for interacting with a SQLite Database. The concept behind it is more convention over configuration. Meaning that, to map an Java Object to a database table, there are very few steps needed:
 
@@ -164,13 +164,13 @@ Getting just the count of all the users in the database:
 
     int numOfUsers = new SqlStatement().select(User.class).getCount();
 
-The [JavaDocs](http://kremerk.github.com/SqliteORM/javadoc/) have a pretty good outline of what is possible with interactions. Note that after you start your SqlStatement a SqlExecutor is returned
-for function chaining. So when looking at the JavaDocs you may want to look at the [SqlExecutor](http://kremerk.github.com/SqliteORM/javadoc/com/kremerk/Sqlite/SqlExecutor.html) class.
+The [JavaDocs](http://njkremer.github.com/SqliteORM/javadoc/) have a pretty good outline of what is possible with interactions. Note that after you start your SqlStatement a SqlExecutor is returned
+for function chaining. So when looking at the JavaDocs you may want to look at the [SqlExecutor](http://njkremer.github.com/SqliteORM/javadoc/com/njkremer/Sqlite/SqlExecutor.html) class.
 
 ***
 
 <a name="moreInfo"></a>
-For more information on how to use this library please see the [GitHub Wiki](https://github.com/kremerk/SqliteORM/wiki)
+For more information on how to use this library please see the [GitHub Wiki](https://github.com/njkremer/SqliteORM/wiki)
 
 ***
 
