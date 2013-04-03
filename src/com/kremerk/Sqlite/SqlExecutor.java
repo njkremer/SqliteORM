@@ -18,10 +18,12 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
 import org.apache.log4j.Logger;
 import org.springframework.aop.framework.ProxyFactory;
+
 import com.kremerk.Sqlite.JoinExecutor.JoinType;
 import com.kremerk.Sqlite.Annotations.AutoIncrement;
 import com.kremerk.Sqlite.Annotations.OneToMany;
@@ -33,8 +35,9 @@ import com.kremerk.Sqlite.utils.SqliteUtils;
  * Used to continue a {@linkplain SqlStatement} to interact with the database.
  * 
  * <p>Typically this class is not instantiated outright, instead use {@linkplain SqlStatement#select(Class)},
- *    {@linkplain SqlStatement#update(Object)}, {@linkplain SqlStatement#insert(Object)}, {@linkplain SqlStatement#delete(Class)},
- *    or {@linkplain SqlStatement#delete(Object)} to create an instance of this class.
+ * {@linkplain SqlStatement#update(Object)}, {@linkplain SqlStatement#insert(Object)},
+ * {@linkplain SqlStatement#delete(Class)}, or {@linkplain SqlStatement#delete(Object)} to create an instance of
+ * this class.
  * 
  * @param <T> A class that is a POJO that "maps" to a table in the database.
  */
@@ -45,7 +48,7 @@ public class SqlExecutor<T> {
      * 
      * @param clazz A reference to the Object.class that you are retrieving from the database.
      * @return A {@linkplain SqlExecutor} used for function chaining.
-     * @throws DataConnectionException
+     * @throws DataConnectionException 
      */
     public SqlExecutor<T> select(Class<T> clazz) throws DataConnectionException {
         reset();
@@ -61,7 +64,7 @@ public class SqlExecutor<T> {
      * 
      * @param databaseObject An object that was queried from the database that has been updated.
      * @return A {@linkplain SqlExecutor} used for function chaining.
-     * @throws DataConnectionException
+     * @throws DataConnectionException 
      */
     @SuppressWarnings("unchecked")
     public SqlExecutor<T> update(Object databaseObject) throws DataConnectionException {
@@ -128,17 +131,18 @@ public class SqlExecutor<T> {
         statementType = StatementType.DELETE;
         return this;
     }
+    
 
     /**
      * Used to do a SQL Join with another POJO/Table.
      * 
-     * <p>A simple example of using joining to get all of a user's things, given the user's name:</p>
+     * <p>A simple example of using joining to get all of a user's things, given the user's name:
      * 
      * <p>
      * <pre>
-     * new SqlStatement().select(Thing.class).join(User.class, &quot;id&quot;, Thing.class, &quot;userId&quot;).where(User.class, &quot;name&quot;).eq(&quot;Bob&quot;).getList()
-     * </pre>
-     * </p>
+     * new SqlStatement().select(Thing.class).join(User.class, "id", Thing.class, "userId")
+     *                                       .where(User.class, "name").eq("Bob").getList()
+     *</pre> 
      * 
      * @param leftClazz The (left) class/table you're joining to.
      * @param leftField The field in the left class/table you're joining on.
@@ -156,18 +160,18 @@ public class SqlExecutor<T> {
         queryParts.put(StatementParts.JOIN, queryParts.get(StatementParts.JOIN).concat(join));
         return this;
     }
-
+    
     /**
      * Used to do a SQL Join with another POJO/Table, with specifying the {@linkplain JoinType}
-     * 
-     * <p>A simple example of using joining to get all of a user's things, given the user's name:</p>
+     *  
+     * <p>A simple example of using joining to get all of a user's things, given the user's name:
      * 
      * <p>
      * <pre>
-     * new SqlStatement().select(Thing.class).join(User.class, &quot;id&quot;, Thing.class, &quot;userId&quot;).where(User.class, &quot;name&quot;).eq(&quot;Bob&quot;).getList()
-     * </pre>
-     * </p>
-     * 
+     * new SqlStatement().select(Thing.class).join(User.class, "id", Thing.class, "userId")
+     *                                       .where(User.class, "name").eq("Bob").getList()
+     *</pre> 
+     *
      * @param leftClazz The (left) class/table you're joining to.
      * @param leftField The field in the left class/table you're joining on.
      * @param rightClazz The (right) class/table you're joining from.
@@ -179,49 +183,48 @@ public class SqlExecutor<T> {
         joinExecutor.setJoinType(joinType);
         return join(leftClazz, leftField, rightClazz, rightField);
     }
-
-    // User {
-    // @OneToMany(userId) // the parameter is the foreignKey in the AccessGroup table
-    // private List<AccessGroup> accessGroup;
-    // }
-    //
-    // Or
-    //
-    // User {
-    // @ManyToMany(userId, groupId) // maybe the go in order of this object's foreign key, then the return objects foreign key... depends on how much "auto magical" stuff we want to do...
-    // private List<AccessGroup> accessGroup;
-    // // another option would be to spell it all out... @ManyToMany(id, userId, id, groupId) first two are the user's id and it's foreign key in the "junction table" then the accessGroups id, and it's foreign key in the junction table)
-    // }
-    // assertEquals("select thing.* from thing join user on user.id = thing.userId", sql);
+    
+    
+//    User {
+//        @OneToMany(userId) // the parameter is the foreignKey in the AccessGroup table
+//        private List<AccessGroup> accessGroup;
+//        }
+//
+//        Or
+//
+//        User {
+//        @ManyToMany(userId, groupId) // maybe the go in order of this object's foreign key, then the return objects foreign key... depends on how much "auto magical" stuff we want to do...
+//        private List<AccessGroup> accessGroup;
+//        // another option would be to spell it all out... @ManyToMany(id, userId, id, groupId) first two are the user's id and it's foreign key in the "junction table" then the accessGroups id, and it's foreign key in the junction table)
+//        }
+//    assertEquals("select thing.* from thing join user on user.id = thing.userId", sql);
     /**
-     * Allows to select a {@linkplain List} of Objects of type T (as specified by class type passed into {@linkplain SqlExecutor#select(Class)}) from the POJO passed into this method. The POJO that is passed in must have a {@linkplain OneToMany} relationship setup in it to property have this method work.
+     * Allows to select a {@linkplain List} of Objects of type T (as specified by class type passed into
+     * {@linkplain SqlExecutor#select(Class)}) from the POJO passed into this method. The POJO that is passed in must have
+     * a {@linkplain OneToMany} relationship setup in it to property have this method work.
      * 
-     * <p>You can use the returned {@linkplain SqlExecutor} object to limit the resulting list by chaining a {@linkplain SqlExecutor#where(String) where} clause after this method.</p>
+     * <p>You can use the returned {@linkplain SqlExecutor} object to limit the resulting list by chaining a {@linkplain SqlExecutor#where(String) where} clause after this method.
      * 
-     * <p>
-     * Example usage would be:
+     * <p> Example usage would be:
      * 
      * <pre>
-     * User nick = new SqlStatement().select(User.class).where(&quot;name&quot;).eq(&quot;Nick&quot;);
+     * User nick = new SqlStatement().select(User.class).where("name").eq("Nick");
      * List&lt;Thing&gt; nicksThings = new SqlStatement().select(Thing.class).from(nick).getList();
      * </pre>
-     * </p>
      * 
-     * <p>
-     * If you only wanted the things where it's value was 5 you could do:
+     * <p>If you only wanted the things where it's value was 5 you could do:
      * 
      * <pre>
-     * User nick = new SqlStatement().select(User.class).where(&quot;name&quot;).eq(&quot;Nick&quot;);
-     * List&lt;Thing&gt; nicksThings = new SqlStatement().select(Thing.class).from(nick).where(&quot;value&quot;).eq(5).getList();
+     * User nick = new SqlStatement().select(User.class).where("name").eq("Nick");
+     * List&lt;Thing&gt; nicksThings = new SqlStatement().select(Thing.class).from(nick).where("value").eq(5).getList();
      * </pre>
-     * </p>
      * 
-     * <p>See {@link OneToMany} for more information on setting up this relationship.</p>
+     * <p>See {@link OneToMany} for more information on setting up this relationship.
      */
     public SqlExecutor<T> from(Object object) throws DataConnectionException {
         String objectPk = this.getPkField(object.getClass());
         String thisFk = this.getFkField(object.getClass());
-
+        
         if (objectPk == null) {
             throw new DataConnectionException("pkField on the target object couldn't be found... it's probably not declared on the object. To use this method the target object must have a PrimaryKey defined.");
         }
@@ -233,7 +236,10 @@ public class SqlExecutor<T> {
     }
 
     /**
-     * Used to start a "where clause" when querying/updating/deleting for an Object from the database. This will return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database call. Additional fields can be added to your "where clause" by using the {@linkplain SqlExecutor#and(String)} method.
+     * Used to start a "where clause" when querying/updating/deleting for an Object from the database. This will
+     * return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database
+     * call. Additional fields can be added to your "where clause" by using the
+     * {@linkplain SqlExecutor#and(String)} method.
      * 
      * @param field The field of the object/database table you want to limit by.
      * @return a {@linkplain WhereExecutor} to be used in conjunction with the <b>where</b> method.
@@ -242,11 +248,15 @@ public class SqlExecutor<T> {
     public WhereExecutor<T> where(String field) throws DataConnectionException {
         return where(this.clazz, field);
     }
-
+    
     /**
-     * Used to start a "where clause" when querying/updating/deleting for an Object from the database. This will return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database call. Additional fields can be added to your "where clause" by using the {@linkplain SqlExecutor#and(String)} method.
+     * Used to start a "where clause" when querying/updating/deleting for an Object from the database. This will
+     * return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database
+     * call. Additional fields can be added to your "where clause" by using the
+     * {@linkplain SqlExecutor#and(String)} method.
      * 
-     * <p>This version is to explicitly state what Entity the field belongs to. This is typically needed when doing a {@linkplain SqlExecutor#join(Class, String, Class, String) join}.</p>
+     * <P>This version is to explicitly state what Entity the field belongs to. This is typically needed when doing
+     * a {@linkplain SqlExecutor#join(Class, String, Class, String) join}.
      * 
      * @param clazz The class who the field belongs to.
      * @param field The field of the object/database table you want to limit by.
@@ -271,7 +281,10 @@ public class SqlExecutor<T> {
     }
 
     /**
-     * Used to continue a "where clause" when querying/updating/deleting for an Object from the database. This will return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database call. Additional fields can be added to your "where clause" by using the {@linkplain SqlExecutor#and(String)} method.
+     * Used to continue a "where clause" when querying/updating/deleting for an Object from the database. This will
+     * return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database
+     * call. Additional fields can be added to your "where clause" by using the
+     * {@linkplain SqlExecutor#and(String)} method.
      * 
      * @param field Additional fields of the object/database table you want to limit by.
      * @return A {@linkplain WhereExecutor} to be used in conjunction with the <b>and</b> method.
@@ -279,11 +292,15 @@ public class SqlExecutor<T> {
     public WhereExecutor<T> and(String field) {
         return and(this.clazz, field);
     }
-
+    
     /**
-     * Used to continue a "where clause" when querying/updating/deleting for an Object from the database. This will return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database call. Additional fields can be added to your "where clause" by using the {@linkplain SqlExecutor#and(String)} method.
+     * Used to continue a "where clause" when querying/updating/deleting for an Object from the database. This will
+     * return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database
+     * call. Additional fields can be added to your "where clause" by using the
+     * {@linkplain SqlExecutor#and(String)} method.
      * 
-     * <p>This version is to explicitly state what Entity the field belongs to. This is typically needed when doing a {@linkplain SqlExecutor#join(Class, String, Class, String) join}.</p>
+     * <P>This version is to explicitly state what Entity the field belongs to. This is typically needed when doing
+     * a {@linkplain SqlExecutor#join(Class, String, Class, String) join}.
      * 
      * @param clazz The class who the field belongs to.
      * @param field Additional fields of the object/database table you want to limit by.
@@ -293,9 +310,12 @@ public class SqlExecutor<T> {
         queryParts.put(StatementParts.WHERE, queryParts.get(StatementParts.WHERE).concat(String.format(AND, clazz.getSimpleName().toLowerCase(), field)));
         return whereExecutor;
     }
-
+    
     /**
-     * Used to continue a "where clause" when querying/updating/deleting for an Object from the database. This will return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database call. Additional fields can be added to your "where clause" by using the {@linkplain SqlExecutor#and(String)} method.
+     * Used to continue a "where clause" when querying/updating/deleting for an Object from the database. This will
+     * return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database
+     * call. Additional fields can be added to your "where clause" by using the
+     * {@linkplain SqlExecutor#and(String)} method.
      * 
      * @param field Additional fields of the object/database table you want to limit by.
      * @return A {@linkplain WhereExecutor} to be used in conjunction with the <b>and</b> method.
@@ -303,9 +323,12 @@ public class SqlExecutor<T> {
     public WhereExecutor<T> or(String field) {
         return or(this.clazz, field);
     }
-
+    
     /**
-     * Used to continue a "where clause" when querying/updating/deleting for an Object from the database. This will return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database call. Additional fields can be added to your "where clause" by using the {@linkplain SqlExecutor#and(String)} method.
+     * Used to continue a "where clause" when querying/updating/deleting for an Object from the database. This will
+     * return a {@linkplain WhereExecutor} that is used to in conjunction with the where to limit your database
+     * call. Additional fields can be added to your "where clause" by using the
+     * {@linkplain SqlExecutor#and(String)} method.
      * 
      * @param field Additional fields of the object/database table you want to limit by.
      * @return A {@linkplain WhereExecutor} to be used in conjunction with the <b>and</b> method.
@@ -316,7 +339,9 @@ public class SqlExecutor<T> {
     }
 
     /**
-     * Used to sort the resulting list of Objects from the query. By default, the order will be ordered in ascending order by the field passed in. If you want to sort in descending order, use {@linkplain SqlExecutor#desc()} after calling this method.
+     * Used to sort the resulting list of Objects from the query. By default, the order will be ordered in
+     * ascending order by the field passed in. If you want to sort in descending order, use
+     * {@linkplain SqlExecutor#desc()} after calling this method.
      * 
      * @param field The field of the object/database table you want to sort the resulting list by.
      * @return A {@linkplain SqlExecutor} used for function chaining.
@@ -327,7 +352,8 @@ public class SqlExecutor<T> {
     }
 
     /**
-     * Used to explicitly say you want to sort in ascending order. Works in conjunction with {@linkplain SqlExecutor#orderBy(String)}.
+     * Used to explicitly say you want to sort in ascending order. Works in conjunction with
+     * {@linkplain SqlExecutor#orderBy(String)}.
      * 
      * @return A {@linkplain SqlExecutor} used for function chaining.
      */
@@ -347,7 +373,8 @@ public class SqlExecutor<T> {
     }
 
     /**
-     * Used to end a {@linkplain SqlStatement#update(Object) update}/{@linkplain SqlStatement#insert(Object) insert}/{@linkplain SqlStatement#delete(Class) delete} {@linkplain SqlStatement}.
+     * Used to end a {@linkplain SqlStatement#update(Object) update}/{@linkplain SqlStatement#insert(Object)
+     * insert}/{@linkplain SqlStatement#delete(Class) delete} {@linkplain SqlStatement}.
      * 
      * @throws DataConnectionException
      */
@@ -374,7 +401,9 @@ public class SqlExecutor<T> {
     }
 
     /**
-     * Returns a {@linkplain List} of Objects of type T (as specified by class type passed into {@linkplain SqlExecutor#select(Class)}) that result from the query built up with the {@linkplain SqlStatement}/{@linkplain SqlExecutor}.
+     * Returns a {@linkplain List} of Objects of type T (as specified by class type passed into
+     * {@linkplain SqlExecutor#select(Class)}) that result from the query built up with the
+     * {@linkplain SqlStatement}/{@linkplain SqlExecutor}.
      * 
      * @return A {@linkplain List} of Objects of type T that is the result from querying the database.
      * @throws DataConnectionException
@@ -389,28 +418,28 @@ public class SqlExecutor<T> {
             throw new DataConnectionException("An error occured when trying to get the list of " + clazz.getSimpleName() + " objects", e);
         }
     }
-
+    
     /**
      * A convenience method to return the first object of a given query which would normally be returned by {@link SqlExecutor#getList}.
-     * 
      * @return An object of type T that is the result of querying the database.
      * @throws DataConnectionException
      */
     public T getFirst() throws DataConnectionException {
         List<T> items = getList();
-
+        
         return items.size() > 0 ? items.get(0) : null;
     }
 
     /**
-     * Returns a {@linkplain List} of {@linkplain Map Maps} which map from a field/database table column for the resulting query along with the passed in {@linkplain ColumnExpression}.
+     * Returns a {@linkplain List} of {@linkplain Map Maps} which map from a field/database table column for the
+     * resulting query along with the passed in {@linkplain ColumnExpression}.
      * 
-     * <p>
-     * The value of the map is of type {@linkplain Object} and will need to be cast to the type of value you're expecting from the fields/columns you specified in your {@linkplain ColumnExpression}.
-     * </p>
+     * <p> The value of the map is of type {@linkplain Object} and will need to be cast to the type of value you're
+     * expecting from the fields/columns you specified in your {@linkplain ColumnExpression}.
      * 
      * @param columnExpression A map expression to specify what columns you want back from the database.
-     * @return A {@linkplain List} of {@linkplain Map Maps} which are the result of the query with the passed in {@linkplain ColumnExpression}.
+     * @return A {@linkplain List} of {@linkplain Map Maps} which are the result of the query with the passed in
+     * {@linkplain ColumnExpression}.
      * @throws DataConnectionException
      */
     public List<Map<String, Object>> getColumns(ColumnExpression columnExpression) throws DataConnectionException {
@@ -423,7 +452,8 @@ public class SqlExecutor<T> {
             throw new DataConnectionException("Could not process the map results of the query.", e);
         }
     }
-
+    
+    
     String getQuery() throws DataConnectionException {
         StringBuilder builder = new StringBuilder();
         for (StatementParts key : queryParts.keySet()) {
@@ -431,17 +461,16 @@ public class SqlExecutor<T> {
         }
         return builder.toString().trim().concat(";");
     }
-
+    
     List<Object> getValues() {
         return this.values;
     }
-
+    
     LinkedHashMap<StatementParts, String> getQueryParts() {
         return this.queryParts;
     }
 
-    private List<T> processResults() throws SQLException, InstantiationException, IllegalAccessException, SecurityException, IllegalArgumentException,
-            NoSuchMethodException, InvocationTargetException, NoSuchFieldException, DataConnectionException {
+    private List<T> processResults() throws SQLException, InstantiationException, IllegalAccessException, SecurityException, IllegalArgumentException, NoSuchMethodException, InvocationTargetException, NoSuchFieldException, DataConnectionException {
         List<T> objects = new ArrayList<T>();
         int columnCount = resultSet.getMetaData().getColumnCount();
         ArrayList<String> columns = new ArrayList<String>();
@@ -511,8 +540,7 @@ public class SqlExecutor<T> {
         return objects;
     }
 
-    private void prepareUpdate(String field) throws IllegalArgumentException, IllegalAccessException, InvocationTargetException, DataConnectionException,
-            SecurityException, NoSuchMethodException {
+    private void prepareUpdate(String field) throws IllegalArgumentException, IllegalAccessException, InvocationTargetException, DataConnectionException, SecurityException, NoSuchMethodException {
         boolean first = true;
         queryParts.put(StatementParts.SET, "");
         for (Field classField : clazz.getDeclaredFields()) {
@@ -544,8 +572,7 @@ public class SqlExecutor<T> {
         }
     }
 
-    private void prepareInsert() throws IllegalArgumentException, IllegalAccessException, InvocationTargetException, SecurityException, NoSuchMethodException,
-            DataConnectionException {
+    private void prepareInsert() throws IllegalArgumentException, IllegalAccessException, InvocationTargetException, SecurityException, NoSuchMethodException, DataConnectionException {
         StringBuilder fieldsString = new StringBuilder("(");
         StringBuilder valuesString = new StringBuilder("values(");
 
@@ -573,7 +600,8 @@ public class SqlExecutor<T> {
                     if (field.getType() == Boolean.class && clazz.getDeclaredMethod(methodName.replaceFirst("is", "get"), (Class<?>[]) null) != null) {
                         throw new DataConnectionException("boolean fields must name their fields isValue, not getValue");
                     }
-                    // this means the field doesn't have a getter, so we're moving on.
+                    // this means the field doesn't have a getter, so we're
+                    // moving on.
                 }
             }
         }
@@ -759,21 +787,21 @@ public class SqlExecutor<T> {
                         }
                     }
                 }
-                // Object thisObjectsPrimaryKey = this.getPkValue(this.getPkField(this.clazz), this.sqlObject);
-                // for(Relationship relationship : relationships.values()) {
-                //
-                // // Get the list of related objects.
-                // Method method = clazz.getDeclaredMethod(relationship.getterName(), (Class<?>[]) null);
-                // List<?> relatedObjects = (List<?>) method.invoke(this, (Object []) null);
-                //
-                // // Call the foreign key setter on each of the objects, with the current object's primary key.
-                // for(Object object : relatedObjects) {
-                // Method objectsSetterMethod = object.getClass().getDeclaredMethod(relationship.foreignSetterName(), relationship.getFkClassType());
-                // objectsSetterMethod.invoke(object, thisObjectsPrimaryKey);
-                // SqlStatement.update(object);
-                // }
-                // }
-                // }
+//                    Object thisObjectsPrimaryKey = this.getPkValue(this.getPkField(this.clazz), this.sqlObject);
+//                    for(Relationship relationship : relationships.values()) {
+//                        
+//                        // Get the list of related objects.
+//                        Method method = clazz.getDeclaredMethod(relationship.getterName(), (Class<?>[]) null);
+//                        List<?> relatedObjects = (List<?>) method.invoke(this, (Object []) null);
+//                        
+//                        // Call the foreign key setter on each of the objects, with the current object's primary key.
+//                        for(Object object : relatedObjects) {
+//                            Method objectsSetterMethod = object.getClass().getDeclaredMethod(relationship.foreignSetterName(), relationship.getFkClassType());
+//                            objectsSetterMethod.invoke(object, thisObjectsPrimaryKey);
+//                            SqlStatement.update(object);
+//                        }
+//                    }
+//                }
             }
         }
         catch (SQLException e) {
@@ -788,8 +816,7 @@ public class SqlExecutor<T> {
         }
     }
 
-    private void processColumn(Object object, String columnName, ResultSet resultSet) throws SQLException, SecurityException, NoSuchMethodException,
-            IllegalArgumentException, IllegalAccessException, InvocationTargetException, NoSuchFieldException, DataConnectionException {
+    private void processColumn(Object object, String columnName, ResultSet resultSet) throws SQLException, SecurityException, NoSuchMethodException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, NoSuchFieldException, DataConnectionException {
         Object value = null;
         Class<?> type = clazz.getDeclaredField(columnName).getType();
         if (type == String.class) {

@@ -37,7 +37,7 @@ public class DataConnectionManager {
      * Logging defaults to {@linkplain org.apache.log4j.Level.WARN}
      * 
      * @param databaseName The absolute path to the database.
-     * @param loggerLevel The level at which the ORM should log messages to console.
+     * @param pathToDatabase The filename of the database.
      */
     public static void init(String databaseName, String pathToDatabase) {
         init(databaseName, pathToDatabase, DEFAULT_LOGGER_LEVEL);
@@ -46,9 +46,8 @@ public class DataConnectionManager {
     /**
      * Initializes the database connection with the passed in relative path (starting at the user.dir) of the java
      * program. Logging is set to provided level.
-     * 
      * @param databaseName The absolute path to the database.
-     * @param pathToDatabase The filename of the database.
+     * @param loggerLevel The level at which the ORM should log messages to console.
      */
     public static void init(String databaseName, Level loggerLevel) {
         init(databaseName, System.getProperty("user.dir"), loggerLevel);
@@ -84,7 +83,7 @@ public class DataConnectionManager {
     }
 
     private DataConnectionManager() {
-        // TODO enforce static usage...
+        // to enforce static usage...
     }
 
     private static void initializeLogging(Level loggerLevel) {
