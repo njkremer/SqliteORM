@@ -2,10 +2,10 @@
 
 ## Recent Updates
 
-03/12/13 Log4J Support - Added by @shortstuffsushi
-10/11/12 Added support for creating an object with associated objects.
-09/29/12 Added in basic support for "faulting" object relationships.
-08/13/12 Support has now been added for One-To-Many relationships.
+03/12/13 log4J Support - Added by [shortstuffsushi](https://github.com/shortstuffsushi)  
+10/11/12 Added support for creating an object with associated objects.  
+09/29/12 Added in basic support for "faulting" object relationships.  
+08/13/12 Support has now been added for One-To-Many relationships.  
 
 ## Quicklinks:
 * [API JavaDoc](http://njkremer.github.com/SqliteORM/javadoc/)
