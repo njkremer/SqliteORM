@@ -147,7 +147,7 @@ Changing the User with the name = Nick's password:
 
     User nick = SqlStatement.select(User.class).where("name").eq("nick");
     nick.setPassword("ABC123");
-    stmt.update(nick).execute(); // Note this is if you define a @PrimaryKey annotation 
+    SqlStatement.update(nick).execute(); // Note this is if you define a @PrimaryKey annotation 
                                  //(see 'Slightly More Advanced "Mapping"' section for more info).
 
 Inserting a new User into the database:
