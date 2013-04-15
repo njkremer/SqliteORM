@@ -131,24 +131,21 @@ Which would map to a table named **user** that looks like:
 
 First you'll need to initialized the connection to the database. You do this with the `DataConnectionManager.init(String)` or `DataConnectionManager.init(String, String)` method.
 
-Once the connection is initialized you will created an instance of SqlStatement for a call to the database. Typically you'd want to create a new SqlStatement for each "set" of calls you'd be
-making. Note that starting a call new call to select/update/insert/delete from a SqlStatement will reset an internal state that is used with the SqlStatement/SqlExecutor instance, so reusing one
-for multiple queries should be fine.
+Once the connection is initialized you will use the static methods off of SqlStatement to interact with the database/objects.
 
 Code Examples:
 
 Retrieving a User from the database:
 
-    User u = new SqlStatement().select(User.class).where("name").eq("Nick").getList().get(0);
+    User u = SqlStatement.select(User.class).where("name").eq("Nick").getList().get(0);
 
 Retreiving a list of Users whose name starts with the letter 'A':
 
-    List<User> users = new SqlStatement().select(User.class).where("name").like("A%").getList();
+    List<User> users = SqlStatement.select(User.class).where("name").like("A%").getList();
 
 Changing the User with the name = Nick's password:
 
-    SqlStatement stmt = new SqlStatement();
-    User nick = stmt.select(User.class).where("name").eq("nick");
+    User nick = SqlStatement.select(User.class).where("name").eq("nick");
     nick.setPassword("ABC123");
     stmt.update(nick).execute(); // Note this is if you define a @PrimaryKey annotation 
                                  //(see 'Slightly More Advanced "Mapping"' section for more info).
@@ -158,15 +155,15 @@ Inserting a new User into the database:
     User newUser = new User();
     newUser.setName("Bob");
     newUser.setPassword("123456");
-    new SqlStatement().insert(newUser).execute();
+    SqlStatement.insert(newUser).execute();
 
 Retreiving a list of all users in descending order:
 
-    List<User> users = new SqlStatement().select(User.class).orderBy("name").desc().getList();
+    List<User> users = SqlStatement.select(User.class).orderBy("name").desc().getList();
 
 Getting just the count of all the users in the database:
 
-    int numOfUsers = new SqlStatement().select(User.class).getCount();
+    int numOfUsers = SqlStatement.select(User.class).getCount();
 
 The [JavaDocs](http://njkremer.github.com/SqliteORM/javadoc/) have a pretty good outline of what is possible with interactions. Note that after you start your SqlStatement a SqlExecutor is returned
 for function chaining. So when looking at the JavaDocs you may want to look at the [SqlExecutor](http://njkremer.github.com/SqliteORM/javadoc/com/njkremer/Sqlite/SqlExecutor.html) class.
